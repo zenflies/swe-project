@@ -13,8 +13,8 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # ─── Auth0 Settings ──────────────────────────────────────────────────────────
-AUTH0_DOMAIN = config('AUTH0_DOMAIN', default='')
-AUTH0_AUDIENCE = config('AUTH0_AUDIENCE', default='')
+AUTH0_DOMAIN = config('AUTH0_DOMAIN', default='dev-607ub60d6546cto0.us.auth0.com')
+AUTH0_AUDIENCE = config('AUTH0_AUDIENCE', default='https://api.itinerate.com/')
 
 # ─── Applications ─────────────────────────────────────────────────────────────
 

@@ -1,10 +1,20 @@
 import json
 import requests
 import jwt
+from functools import lru_cache
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+
+@lru_cache(maxsize=1)
+def get_jwks(domain):
+    """Fetch and cache the JWKS from Auth0 to avoid external requests on every API call."""
+    jwks_url = f'https://{domain}/.well-known/jwks.json'
+    try:
+        return requests.get(jwks_url).json()
+    except Exception:
+        raise AuthenticationFailed('Unable to fetch JWKS from Auth0.')
 
 class Auth0JWTAuthentication(BaseAuthentication):
     """
@@ -23,11 +33,7 @@ class Auth0JWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Auth0 is not configured on the server.')
 
         # Fetch JWKS (JSON Web Key Set) from Auth0
-        jwks_url = f'https://{domain}/.well-known/jwks.json'
-        try:
-            jwks = requests.get(jwks_url).json()
-        except Exception:
-            raise AuthenticationFailed('Unable to fetch JWKS from Auth0.')
+        jwks = get_jwks(domain)
 
         try:
             unverified_header = jwt.get_unverified_header(token)
@@ -59,7 +65,8 @@ class Auth0JWTAuthentication(BaseAuthentication):
             if not username:
                 raise AuthenticationFailed('Token has no subject claim.')
 
-            user, _ = User.objects.get_or_create(username=username[:150])
+            # Link the Auth0 user ID (sub) to the local PostgreSQL User database
+            user, created = User.objects.get_or_create(username=username[:150])
             return (user, token)
             
         raise AuthenticationFailed('Unable to find an appropriate key to verify token.')

@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import QuizResultViewSet, SavedItineraryViewSet
 
-from .views import ItineraryDetailView, ItineraryListCreateView, QuizResultListCreateView
+router = DefaultRouter()
+router.register(r'quiz-results', QuizResultViewSet, basename='quiz-results')
+router.register(r'itineraries', SavedItineraryViewSet, basename='itineraries')
 
 urlpatterns = [
-    path('quiz-results/', QuizResultListCreateView.as_view(), name='quiz-results'),
-    path('itineraries/', ItineraryListCreateView.as_view(), name='itineraries'),
-    path('itineraries/<int:pk>/', ItineraryDetailView.as_view(), name='itinerary-detail'),
+    path('', include(router.urls)),
 ]

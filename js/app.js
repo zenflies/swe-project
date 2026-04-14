@@ -98,8 +98,37 @@ async function checkSession() {
       // Pings our backend to ensure the Django DB creates/updates our user record 
       try {
         await apiFetch('/me/');
+        
+        // 1. Fetch saved quiz results from PostgreSQL
+        const quizRes = await apiFetch('/quiz-results/');
+        if (quizRes.ok) {
+          const results = await quizRes.json();
+          if (results.length > 0) {
+            // Get the most recent quiz result
+            const latest = results[results.length - 1];
+            // Match the saved title (e.g. "The Bold Adventurer") back to the ID ("adventure")
+            const savedType = Object.keys(personalityTypes).find(
+              key => personalityTypes[key].title === latest.personality_type || key === latest.personality_type
+            );
+            if (savedType) {
+              state.personalityType = savedType;
+            }
+          }
+        }
+
+        // 2. Fetch saved itineraries
+        const itinRes = await apiFetch('/itineraries/');
+        if (itinRes.ok) {
+          const itineraries = await itinRes.json();
+          if (itineraries.length > 0) {
+            state.savedItinerary = true;
+          }
+        }
+        
+        // Re-update dashboard now that we have their saved data
+        updateDashboard();
       } catch (e) {
-        console.warn("Backend not reachable, but user is logged in locally.");
+        console.warn("Backend not reachable or error fetching user data:", e);
       }
     }
   } catch (e) {
@@ -1130,7 +1159,9 @@ function calculatePersonality() {
         personality_type: pt.title,
         answers: Object.fromEntries(state.quizAnswers.map((a, i) => [`q${i + 1}`, a?.type])),
       }),
-    }).catch(() => {});
+      })
+      .then(async (res) => console.log("Quiz saved:", await res.json()))
+      .catch(err => console.error("Error saving quiz to database:", err));
   }
   showToast(`You're a ${pt.title}! Let's find your perfect destination.`);
 }
