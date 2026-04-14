@@ -14,21 +14,26 @@ const state = {
 // ===== API =====
 const API_BASE = 'http://localhost:8000/api';
 
-function getCsrfToken() {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith('csrftoken='))
-    ?.split('=')[1];
-}
+let auth0Client = null;
+
+// TODO: Replace these with your Auth0 Application details
+const AUTH0_DOMAIN = 'dev-607ub60d6546cto0.us.auth0.com';
+const AUTH0_CLIENT_ID = 'pUkC3pu7otzLwkZcLtFvMXfRCNoI9fG1';
+const AUTH0_AUDIENCE = 'https://api.itinerate.com/';
 
 async function apiFetch(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
+  let token = null;
+  
+  if (auth0Client && await auth0Client.isAuthenticated()) {
+    token = await auth0Client.getTokenSilently();
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(method !== 'GET' ? { 'X-CSRFToken': getCsrfToken() } : {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -36,14 +41,70 @@ async function apiFetch(path, options = {}) {
 }
 
 async function checkSession() {
+  // 1. Prevent silent failures if you accidentally opened the file directly
+  if (window.location.protocol === 'file:') {
+    console.error("Auth0 requires a local server. You are running on file://");
+    showToast("Error: You must run a local server (localhost) for login to work!", "info");
+    return;
+  }
+
   try {
-    const res = await apiFetch('/me/');
-    if (res.ok) {
-      const data = await res.json();
-      state.user = { id: data.id, name: data.first_name || data.username, email: data.email };
-      updateDashboard();
+    auth0Client = await auth0.createAuth0Client({
+      domain: AUTH0_DOMAIN,
+      clientId: AUTH0_CLIENT_ID,
+      authorizationParams: {
+        audience: AUTH0_AUDIENCE,
+        redirect_uri: window.location.origin
+      },
+      cacheLocation: 'localstorage'
+    });
+  } catch (e) {
+    console.error("Auth0 initialization error:", e);
+    return;
+  }
+
+  // Check if returning from the Auth0 login redirect
+  const search = window.location.search;
+  
+  // 2. Catch instant bounce-back errors from Auth0
+  if (search.includes('error=')) {
+    const params = new URLSearchParams(search);
+    showToast(`Auth0 Error: ${params.get('error_description') || params.get('error')}`, 'info');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  if (search.includes('state=')) {
+    if (search.includes('code=')) {
+      try {
+        await auth0Client.handleRedirectCallback();
+      } catch (e) {
+        console.error("Auth0 callback error:", e);
+      }
     }
-  } catch { /* not logged in or server offline */ }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  try {
+    const isAuthenticated = await auth0Client.isAuthenticated();
+    if (isAuthenticated) {
+      const user = await auth0Client.getUser();
+      state.user = { 
+        id: user?.sub, 
+        name: user?.name || user?.nickname || user?.email || 'Traveler', 
+        email: user?.email 
+      };
+      updateDashboard();
+      
+      // Pings our backend to ensure the Django DB creates/updates our user record 
+      try {
+        await apiFetch('/me/');
+      } catch (e) {
+        console.warn("Backend not reachable, but user is logged in locally.");
+      }
+    }
+  } catch (e) {
+    console.error("Auth0 check failed:", e);
+  }
 }
 
 // ===== QUIZ DATA =====
@@ -834,21 +895,19 @@ function updateNavbar(pageId) {
 }
 
 function showAuthPage(tab = 'login') {
-  showPage('page-auth');
-  switchAuthTab(tab);
+  if (tab === 'signup') {
+    handleSignup();
+  } else {
+    handleLogin();
+  }
 }
 
 async function logout() {
-  try {
-    await apiFetch('/logout/', { method: 'POST' });
-  } catch { /* server offline — still clear local state */ }
-  state.user = null;
-  state.quizAnswers = [];
-  state.personalityType = null;
-  state.selectedDestination = null;
-  state.quizStep = 0;
-  showPage('page-home');
-  showToast('You have been signed out.', 'info');
+  if (auth0Client) {
+    await auth0Client.logout({
+      logoutParams: { returnTo: window.location.origin }
+    });
+  }
 }
 
 function showToast(message, type = 'success') {
@@ -874,65 +933,24 @@ function switchAuthTab(tab) {
 }
 
 async function handleLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('login-email')?.value;
-  const password = document.getElementById('login-password')?.value;
-  if (!email || !password) { showToast('Please fill in all fields.', 'info'); return; }
-
-  const btn = e.target.querySelector('button[type="submit"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
-
-  try {
-    const res = await apiFetch('/login/', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      state.user = { id: data.id, name: data.first_name || data.username, email: data.email };
-      showPage('page-dashboard');
-      updateDashboard();
-      showToast(`Welcome back, ${state.user.name}!`);
-    } else {
-      showToast(data.error || 'Login failed. Please check your credentials.', 'info');
-    }
-  } catch {
-    showToast('Could not connect to the server. Is the backend running?', 'info');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+  if (e) e.preventDefault();
+  if (auth0Client) {
+    await auth0Client.loginWithRedirect();
+  } else {
+    showToast('Login failed: Auth0 is not connected. Are you using localhost?', 'info');
   }
 }
 
 async function handleSignup(e) {
-  e.preventDefault();
-  const fname = document.getElementById('signup-fname')?.value;
-  const lname = document.getElementById('signup-lname')?.value;
-  const email = document.getElementById('signup-email')?.value;
-  const password = document.getElementById('signup-password')?.value;
-  if (!fname || !email || !password) { showToast('Please fill in all required fields.', 'info'); return; }
-
-  const btn = e.target.querySelector('button[type="submit"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
-
-  try {
-    const res = await apiFetch('/signup/', {
-      method: 'POST',
-      body: JSON.stringify({ first_name: fname, last_name: lname || '', email, password }),
+  if (e) e.preventDefault();
+  if (auth0Client) {
+    await auth0Client.loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'signup'
+      }
     });
-    const data = await res.json();
-    if (res.ok) {
-      state.user = { id: data.id, name: data.first_name || data.username, email: data.email };
-      showPage('page-dashboard');
-      updateDashboard();
-      showToast(`Welcome to Itinerate, ${fname}! Let's find your perfect trip.`);
-    } else {
-      const msg = Object.values(data).flat()[0] || 'Signup failed. Please try again.';
-      showToast(String(msg), 'info');
-    }
-  } catch {
-    showToast('Could not connect to the server. Is the backend running?', 'info');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Create Account — Free →'; }
+  } else {
+    showToast('Signup failed: Auth0 is not connected. Are you using localhost?', 'info');
   }
 }
 
@@ -1290,13 +1308,15 @@ function handleScroll() {
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-  // Get the CSRF cookie so write requests are authorised from the start.
-  apiFetch('/csrf/').catch(() => {});
-  // Restore the session if the user is already logged in.
-  checkSession();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize Auth0 and resolve redirect states
+  await checkSession();
 
-  showPage('page-home');
+  if (state.user) {
+    showPage('page-dashboard');
+  } else {
+    showPage('page-home');
+  }
   window.addEventListener('scroll', handleScroll);
 
   // Auth tabs
