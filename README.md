@@ -231,29 +231,3 @@ The SQLite database (`itinerate.db`) is created automatically on first run.
 | updated_at | TEXT | Updated on re-save |
 
 ---
-
-## Frontend Changes (app.js)
-
-The updated `public-js/app.js` replaces the old in-memory auth with real API calls:
-
-- **Register/Login** → calls `/api/auth/register` and `/api/auth/login`, stores JWT in `localStorage`
-- **Session restore** → on page load, reads JWT from `localStorage` and calls `/api/auth/me` to restore session
-- **Quiz save** → after completing quiz, saves result via `POST /api/itinerary/quiz/save`
-- **Save Itinerary** → calls `POST /api/itinerary` to persist to database under the user's account
-- **Logout** → clears JWT from `localStorage`
-
----
-
-## Deployment Notes
-
-### Environment variables to change for production:
-- `JWT_SECRET` → long random string (64+ characters)
-- `ALLOWED_ORIGIN` → your frontend domain, e.g. `https://itinerate.co`
-- `PORT` → set by your hosting provider (Render, Railway, Fly.io)
-
-### Recommended hosting:
-- **Railway** or **Render** — free tier works, auto-detects Node.js
-- SQLite database file persists on disk; for high-traffic production consider migrating to **PostgreSQL** with the `pg` package
-
-### To use PostgreSQL instead of SQLite:
-Replace `better-sqlite3` with `pg`, update `db.js` queries to use `$1/$2` placeholders, and set a `DATABASE_URL` environment variable.
