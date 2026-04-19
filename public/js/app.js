@@ -35,6 +35,8 @@ const state = {
   quizAnswers: [],
   personalityType: null,
   selectedDestination: null,
+  selectedFlight: null,
+  selectedHotel: null,
   savedItinerary: false
 };
 
@@ -187,7 +189,7 @@ const allDestinations = [
     types: ["cultural", "foodie", "introvert"],
     tags: ["Cultural", "Temples", "Cuisine", "Zen"],
     bestFor: "Cultural Explorer",
-    duration: "5–7 days",
+    duration: "5 days",
     budget: "$$",
     match: 97
   },
@@ -202,7 +204,7 @@ const allDestinations = [
     types: ["relaxation", "introvert", "adventure"],
     tags: ["Wellness", "Beaches", "Spiritual", "Surfing"],
     bestFor: "Relaxation Seeker",
-    duration: "7–10 days",
+    duration: "5 days",
     budget: "$$",
     match: 95
   },
@@ -217,7 +219,7 @@ const allDestinations = [
     types: ["adventure", "introvert"],
     tags: ["Hiking", "Mountains", "Wildlife", "Remote"],
     bestFor: "Bold Adventurer",
-    duration: "10–14 days",
+    duration: "5 days",
     budget: "$$$",
     match: 99
   },
@@ -232,7 +234,7 @@ const allDestinations = [
     types: ["luxury", "relaxation"],
     tags: ["Luxury", "Sunsets", "Wine", "Romantic"],
     bestFor: "Luxury Connoisseur",
-    duration: "5–7 days",
+    duration: "5 days",
     budget: "$$$",
     match: 94
   },
@@ -247,7 +249,7 @@ const allDestinations = [
     types: ["introvert", "adventure"],
     tags: ["Auroras", "Waterfalls", "Hot Springs", "Remote"],
     bestFor: "Quiet Wanderer",
-    duration: "7–10 days",
+    duration: "5 days",
     budget: "$$$",
     match: 96
   },
@@ -262,7 +264,7 @@ const allDestinations = [
     types: ["cultural", "foodie"],
     tags: ["Architecture", "Food", "Art", "Beach"],
     bestFor: "Cultural Explorer",
-    duration: "5–7 days",
+    duration: "5 days",
     budget: "$$",
     match: 93
   },
@@ -277,7 +279,7 @@ const allDestinations = [
     types: ["luxury", "relaxation"],
     tags: ["Overwater Villas", "Snorkeling", "Isolation", "Luxury"],
     bestFor: "Luxury Connoisseur",
-    duration: "7–10 days",
+    duration: "5 days",
     budget: "$$$$",
     match: 91
   },
@@ -292,11 +294,99 @@ const allDestinations = [
     types: ["foodie", "cultural", "adventure"],
     tags: ["Food", "Technology", "Culture", "Urban"],
     bestFor: "Culinary Traveler",
-    duration: "7–10 days",
+    duration: "5 days",
     budget: "$$",
     match: 98
   }
 ];
+
+// ===== FLIGHT DATA =====
+const flightData = {
+  kyoto: [
+    { id: 'ky-f1', airline: 'Japan Airlines', badge: '🇯🇵', flightNumber: 'JL 061', from: 'New York (JFK)', to: 'Osaka (KIX)', departure: '11:30 AM', arrival: '3:45 PM +1', duration: '14h 15m', stops: 'Nonstop', price: 847, class: 'Economy', perks: ['In-flight meals included', 'On-demand entertainment', '2 checked bags', 'USB charging at seat'] },
+    { id: 'ky-f2', airline: 'United Airlines', badge: '✈️', flightNumber: 'UA 837', from: 'New York (JFK)', to: 'Osaka (KIX)', departure: '1:15 PM', arrival: '9:45 PM +1', duration: '17h 30m', stops: '1 stop · Tokyo (NRT)', price: 623, class: 'Economy', perks: ['Snacks & drinks', 'In-seat USB power', '1 checked bag', 'MileagePlus miles earned'] },
+    { id: 'ky-f3', airline: 'All Nippon Airways', badge: '🌸', flightNumber: 'NH 010', from: 'New York (JFK)', to: 'Osaka (KIX)', departure: '10:50 AM', arrival: '2:30 PM +1', duration: '14h 05m', stops: 'Nonstop', price: 2890, class: 'Business', perks: ['Lie-flat business suite', 'Fine dining & sake pairing', '2 bags + priority handling', 'Airport lounge access', 'Premium amenity kit'] }
+  ],
+  bali: [
+    { id: 'ba-f1', airline: 'Singapore Airlines', badge: '🇸🇬', flightNumber: 'SQ 478', from: 'New York (JFK)', to: 'Denpasar (DPS)', departure: '10:30 AM', arrival: '11:55 PM +1', duration: '24h 25m', stops: '1 stop · Singapore (SIN)', price: 1120, class: 'Economy', perks: ['KrisFlyer miles earned', 'World-class in-flight dining', '2 checked bags', 'Award-winning entertainment'] },
+    { id: 'ba-f2', airline: 'Cathay Pacific', badge: '✈️', flightNumber: 'CX 841', from: 'New York (JFK)', to: 'Denpasar (DPS)', departure: '12:45 PM', arrival: '9:15 AM +2', duration: '22h 30m', stops: '1 stop · Hong Kong (HKG)', price: 934, class: 'Economy', perks: ['Complimentary meals', 'USB & AC power', '1 checked bag', 'Asia Miles earned'] },
+    { id: 'ba-f3', airline: 'Emirates', badge: '🇦🇪', flightNumber: 'EK 388', from: 'New York (JFK)', to: 'Denpasar (DPS)', departure: '9:15 PM', arrival: '4:30 PM +2', duration: '26h 15m', stops: '1 stop · Dubai (DXB)', price: 3450, class: 'Business', perks: ['Private lie-flat suite', 'Onboard bar & lounge', '2 bags priority', 'Dubai airport lounge', 'Chauffeur service'] }
+  ],
+  patagonia: [
+    { id: 'pa-f1', airline: 'LATAM Airlines', badge: '🇨🇱', flightNumber: 'LA 500', from: 'Miami (MIA)', to: 'Punta Arenas (PUQ)', departure: '8:00 AM', arrival: '10:25 PM', duration: '14h 25m', stops: '1 stop · Santiago (SCL)', price: 1230, class: 'Economy', perks: ['Complimentary meals', 'Personal entertainment screen', '1 checked bag', 'LATAM Pass miles'] },
+    { id: 'pa-f2', airline: 'American Airlines', badge: '✈️', flightNumber: 'AA 903', from: 'New York (JFK)', to: 'Punta Arenas (PUQ)', departure: '6:30 AM', arrival: '11:55 PM', duration: '18h 25m', stops: '2 stops · Miami + Santiago', price: 987, class: 'Economy', perks: ['Snacks included', 'In-seat power', '1 checked bag', 'AAdvantage miles'] },
+    { id: 'pa-f3', airline: 'LATAM Airlines', badge: '🇨🇱', flightNumber: 'LA 500', from: 'Miami (MIA)', to: 'Punta Arenas (PUQ)', departure: '8:00 AM', arrival: '10:25 PM', duration: '14h 25m', stops: '1 stop · Santiago (SCL)', price: 2760, class: 'Business', perks: ['Premium lie-flat seat', 'Gourmet 3-course meals', '2 bags priority', 'Lounge access in Santiago', 'Dedicated check-in'] }
+  ],
+  santorini: [
+    { id: 'sa-f1', airline: 'Aegean Airlines', badge: '🇬🇷', flightNumber: 'A3 601', from: 'New York (JFK)', to: 'Santorini (JTR)', departure: '6:00 PM', arrival: '4:45 PM +1', duration: '16h 45m', stops: '1 stop · Athens (ATH)', price: 780, class: 'Economy', perks: ['Miles+Bonus earned', 'Complimentary meals', '1 checked bag', 'Award-winning service'] },
+    { id: 'sa-f2', airline: 'Lufthansa', badge: '🇩🇪', flightNumber: 'LH 400', from: 'New York (JFK)', to: 'Santorini (JTR)', departure: '5:30 PM', arrival: '5:20 PM +1', duration: '17h 50m', stops: '1 stop · Frankfurt (FRA)', price: 892, class: 'Economy', perks: ['Complimentary dining', 'In-seat entertainment', '1 checked bag', 'Miles & More earned'] },
+    { id: 'sa-f3', airline: 'Olympic Air + Aegean', badge: '✨', flightNumber: 'OA / A3', from: 'New York (JFK)', to: 'Santorini (JTR)', departure: '6:00 PM', arrival: '4:45 PM +1', duration: '16h 45m', stops: '1 stop · Athens (ATH)', price: 1890, class: 'Business', perks: ['Business class to Athens', 'Priority connection', 'Private lounge', '2 bags priority', 'Fast-track immigration'] }
+  ],
+  iceland: [
+    { id: 'ic-f1', airline: 'Icelandair', badge: '🇮🇸', flightNumber: 'FI 631', from: 'New York (JFK)', to: 'Reykjavik (KEF)', departure: '5:15 PM', arrival: '6:00 AM +1', duration: '5h 45m', stops: 'Nonstop', price: 489, class: 'Economy', perks: ['Saga Club miles', 'In-seat entertainment', '1 checked bag', 'Iceland stopover options'] },
+    { id: 'ic-f2', airline: 'Delta Air Lines', badge: '✈️', flightNumber: 'DL 404', from: 'New York (JFK)', to: 'Reykjavik (KEF)', departure: '9:15 PM', arrival: '12:30 PM +1', duration: '10h 15m', stops: '1 stop · Amsterdam (AMS)', price: 567, class: 'Economy', perks: ['SkyMiles earned', 'Complimentary snacks', '1 checked bag', 'In-seat entertainment'] },
+    { id: 'ic-f3', airline: 'Icelandair', badge: '🇮🇸', flightNumber: 'FI 631', from: 'New York (JFK)', to: 'Reykjavik (KEF)', departure: '5:15 PM', arrival: '6:00 AM +1', duration: '5h 45m', stops: 'Nonstop', price: 1240, class: 'Saga Class (Business)', perks: ['Lie-flat business seat', 'Fine Nordic dining', '2 bags priority', 'Saga Lounge access', 'Dedicated check-in'] }
+  ],
+  barcelona: [
+    { id: 'bc-f1', airline: 'Iberia', badge: '🇪🇸', flightNumber: 'IB 6251', from: 'New York (JFK)', to: 'Barcelona (BCN)', departure: '9:00 PM', arrival: '10:55 AM +1', duration: '8h 55m', stops: 'Nonstop', price: 620, class: 'Economy', perks: ['Iberia Plus miles', 'Complimentary meals', '1 checked bag', 'Entertainment on demand'] },
+    { id: 'bc-f2', airline: 'American Airlines', badge: '✈️', flightNumber: 'AA 93', from: 'New York (JFK)', to: 'Barcelona (BCN)', departure: '7:15 PM', arrival: '8:50 AM +1', duration: '7h 55m', stops: 'Nonstop', price: 540, class: 'Economy', perks: ['AAdvantage miles', 'Snacks & drinks', '1 checked bag', 'In-seat screens'] },
+    { id: 'bc-f3', airline: 'Iberia', badge: '🇪🇸', flightNumber: 'IB 6251', from: 'New York (JFK)', to: 'Barcelona (BCN)', departure: '9:00 PM', arrival: '10:55 AM +1', duration: '8h 55m', stops: 'Nonstop', price: 2340, class: 'Business', perks: ['Fully flat business bed', 'À la carte dining', '2 bags priority', 'Velázquez Lounge access', 'Amenity kit & pyjamas'] }
+  ],
+  maldives: [
+    { id: 'mv-f1', airline: 'Emirates', badge: '🇦🇪', flightNumber: 'EK 601', from: 'New York (JFK)', to: 'Malé (MLE)', departure: '10:35 PM', arrival: '11:45 PM +1', duration: '19h 10m', stops: '1 stop · Dubai (DXB)', price: 1340, class: 'Economy', perks: ['Complimentary dining', 'ICE entertainment system', '2 checked bags', 'Skywards miles'] },
+    { id: 'mv-f2', airline: 'Sri Lankan Airlines', badge: '🇱🇰', flightNumber: 'UL 206', from: 'New York (JFK)', to: 'Malé (MLE)', departure: '9:00 PM', arrival: '1:20 AM +2', duration: '22h 20m', stops: '1 stop · Colombo (CMB)', price: 1120, class: 'Economy', perks: ['Sri Lankan cuisine onboard', 'Personal screen', '2 checked bags', 'FlySmiLes miles'] },
+    { id: 'mv-f3', airline: 'Emirates', badge: '🇦🇪', flightNumber: 'EK 601', from: 'New York (JFK)', to: 'Malé (MLE)', departure: '10:35 PM', arrival: '11:45 PM +1', duration: '19h 10m', stops: '1 stop · Dubai (DXB)', price: 5600, class: 'First Class', perks: ['Private first class suite', 'Shower spa onboard', '3 bags priority', 'Emirates First Lounge', 'Vintage Dom Pérignon'] }
+  ],
+  tokyo: [
+    { id: 'tk-f1', airline: 'All Nippon Airways', badge: '🌸', flightNumber: 'NH 010', from: 'New York (JFK)', to: 'Tokyo (NRT)', departure: '10:50 AM', arrival: '2:25 PM +1', duration: '13h 35m', stops: 'Nonstop', price: 780, class: 'Economy', perks: ['Japanese cuisine onboard', 'On-demand entertainment', '2 checked bags', 'ANA Mileage Club'] },
+    { id: 'tk-f2', airline: 'Japan Airlines', badge: '🇯🇵', flightNumber: 'JL 003', from: 'New York (JFK)', to: 'Tokyo (NRT)', departure: '1:25 PM', arrival: '4:55 PM +1', duration: '13h 30m', stops: 'Nonstop', price: 820, class: 'Economy', perks: ['Gourmet Japanese meals', 'Award-winning entertainment', '2 checked bags', 'JAL Mileage Bank'] },
+    { id: 'tk-f3', airline: 'All Nippon Airways', badge: '🌸', flightNumber: 'NH 010', from: 'New York (JFK)', to: 'Tokyo (NRT)', departure: '10:50 AM', arrival: '2:25 PM +1', duration: '13h 35m', stops: 'Nonstop', price: 3200, class: 'Business', perks: ['The Room — full flat suite', 'Kaiseki multi-course dining', '2 bags priority + golf bag', 'ANA Lounge access', 'Turndown service'] }
+  ]
+};
+
+// ===== HOTEL DATA =====
+const hotelData = {
+  kyoto: [
+    { id: 'ky-h1', name: 'Suiran, a Luxury Collection Hotel', stars: 5, type: 'Luxury Ryokan', neighborhood: 'Arashiyama', price: 520, image: '🏯', description: 'Perched along the Oi River with private views of Arashiyama\'s bamboo grove, Suiran is the pinnacle of Japanese luxury — a ryokan meets world-class resort. Each room blends traditional tatami with modern elegance.', amenities: ['Private Onsen', 'Kaiseki Restaurant', 'Bamboo Grove Views', 'Kimono Rental', 'Butler Service', 'Spa'] },
+    { id: 'ky-h2', name: 'The Screen Kyoto', stars: 4, type: 'Boutique Hotel', neighborhood: 'Nakagyo District', price: 280, image: '🎨', description: 'A design-lover\'s sanctuary in the heart of Kyoto — 13 individually designed rooms by different Japanese artists, each telling a story of a different era in Japanese history. Walking distance from Nijo Castle.', amenities: ['Art Gallery On-Site', 'Rooftop Terrace', 'Curated Library', 'Bicycle Rental', 'Evening Sake Service'] },
+    { id: 'ky-h3', name: 'Hotel Granvia Kyoto', stars: 4, type: 'City Hotel', neighborhood: 'Kyoto Station', price: 185, image: '🏢', description: 'Directly connected to Kyoto Station with panoramic city views, Granvia offers Japanese and Western rooms with seamless access to all major attractions. A smart base for explorers covering the whole city.', amenities: ['5 On-Site Restaurants', 'Fitness Center', 'Business Center', 'Concierge', 'Express Check-In'] }
+  ],
+  bali: [
+    { id: 'ba-h1', name: 'Four Seasons Resort Jimbaran Bay', stars: 5, type: 'Beachfront Resort', neighborhood: 'Jimbaran Bay', price: 890, image: '🌺', description: 'A barefoot luxury haven on Jimbaran\'s calm bay — private villas with plunge pools, traditional thatched pavilions, and a beach framed by fishing village sunsets. Indonesia\'s gold standard in resort living.', amenities: ['Private Plunge Pools', 'KOSSU Spa', 'Cooking Classes', 'Watersports', 'Three Restaurants', 'Kids Club'] },
+    { id: 'ba-h2', name: 'Alaya Resort Ubud', stars: 4, type: 'Jungle Resort', neighborhood: 'Ubud Gorge', price: 220, image: '🌿', description: 'Suspended above a dramatic jungle gorge in central Ubud, Alaya offers 56 suites and villas surrounded by the sound of the Wos River. Traditional Balinese architecture meets modern comfort.', amenities: ['Infinity Pool', 'Spa Alaya', 'Gorge Views', 'Yoga Pavilion', 'Farm-to-Table Restaurant', 'Bicycle Rental'] },
+    { id: 'ba-h3', name: 'COMO Shambhala Estate', stars: 5, type: 'Wellness Retreat', neighborhood: 'Ubud Highlands', price: 650, image: '🧘', description: 'The world\'s premier wellness destination in Bali\'s highlands — a private estate where holistic healing, Ayurvedic treatments, and cleanse programs are set among river gorges, jungle paths, and organic gardens.', amenities: ['Holistic Health Programs', 'COMO Shambhala Cuisine', 'Heated Pool', 'Yoga & Pilates', 'Ayurvedic Treatments', 'Personal Nutritionist'] }
+  ],
+  patagonia: [
+    { id: 'pa-h1', name: 'Explora Patagonia', stars: 5, type: 'Luxury Wilderness Lodge', neighborhood: 'Torres del Paine NP', price: 780, image: '🏔️', description: 'The legendary all-inclusive wilderness lodge at the gateway to Torres del Paine — floor-to-ceiling windows frame the Paine Massif, and expert guides lead you to places most travelers never find. All excursions included.', amenities: ['All-Inclusive Excursions', 'Expert Naturalist Guides', 'Spa & Hot Pools', 'Gourmet Patagonian Dining', 'Bar & Lounge', 'Astronomy Deck'] },
+    { id: 'pa-h2', name: 'Las Torres Patagonia', stars: 4, type: 'Mountain Hotel', neighborhood: 'Base of Torres', price: 290, image: '⛺', description: 'The closest hotel to the iconic three towers, sitting at the trailhead of the most famous hike in South America. Simple luxury in an extraordinary setting — wake up with the towers glowing orange at sunrise.', amenities: ['Trail Access', 'Hot Tub', 'Regional Cuisine Restaurant', 'Gear Storage', 'Guide Service', 'Bar with Fireplace'] },
+    { id: 'pa-h3', name: 'Awasi Patagonia', stars: 5, type: 'Private Villa Lodge', neighborhood: 'Torres del Paine', price: 1100, image: '🌟', description: 'Just 12 private villas on the pampa, each with its own exclusive 4x4 vehicle and dedicated guide. The most intimate, personalized Patagonia experience on earth — every day tailored entirely to you.', amenities: ['Private Vehicle & Guide', 'Heated Villas', 'Chef-Prepared Meals', 'Private Hot Tub', 'Stargazing Sessions', 'Wildlife Photography Excursions'] }
+  ],
+  santorini: [
+    { id: 'sa-h1', name: 'Canaves Oia Epitome', stars: 5, type: 'Cliffside Suite Hotel', neighborhood: 'Oia Village', price: 1200, image: '🏛️', description: 'The most celebrated hotel on Santorini\'s iconic cliffside — exclusive suites carved into the volcanic caldera rock with private infinity pools, butlers, and unobstructed views of the caldera and Thirassia island.', amenities: ['Private Infinity Pools', 'Butler Service', 'Caldera Views', 'Fine Dining Restaurant', 'Spa Cave', 'Complimentary Transfers'] },
+    { id: 'sa-h2', name: 'Astra Suites', stars: 4, type: 'Boutique Suite Hotel', neighborhood: 'Imerovigli', price: 420, image: '🌅', description: 'Perched at the highest point of the caldera rim in serene Imerovigli, Astra\'s 27 Cycladic suites blend natural rock architecture with modern elegance. The views of the famous caldera sunset are unparalleled.', amenities: ['Caldera View Pool', 'Cliff Spa', 'Breakfast Terrace', 'Concierge', 'Sunset Terrace', 'Wine Cellar'] },
+    { id: 'sa-h3', name: 'Hotel Katikies Santorini', stars: 5, type: 'Luxury Cliffside Hotel', neighborhood: 'Oia', price: 890, image: '✨', description: 'Three tiered infinity pools cascading down the caldera cliff — Katikies is a masterpiece of whitewashed Cycladic architecture with some of Santorini\'s finest dining and the most photographed pool in Greece.', amenities: ['3 Infinity Pools', 'Signature Restaurant', 'Spa & Hammam', 'Caldera Views', 'Boat Excursions', 'Champagne Service'] }
+  ],
+  iceland: [
+    { id: 'ic-h1', name: 'The Retreat at Blue Lagoon Iceland', stars: 5, type: 'Geothermal Spa Hotel', neighborhood: 'Grindavík Lava Fields', price: 1200, image: '💎', description: 'The world\'s most extraordinary spa hotel — built into a 800-year-old lava field with its own private section of the Blue Lagoon mineral waters, in-water suites, and the finest Nordic cuisine. Iceland personified.', amenities: ['Private Blue Lagoon Access', 'In-Water Relaxation Suite', 'LAVA Restaurant', 'Spa Rituals', 'Silica & Algae Treatments', 'Midnight Sun Viewing'] },
+    { id: 'ic-h2', name: 'Ion Adventure Hotel', stars: 4, type: 'Design Adventure Hotel', neighborhood: 'Nesjavellir Geothermal Area', price: 380, image: '🌌', description: 'A striking modernist lodge perched above a geothermal power station between two national parks — panoramic Northern Lights viewing room, midnight sun photography decks, and direct access to hiking and lava fields.', amenities: ['Northern Lights Viewing Room', 'Hot Tubs', 'Adventure Desk', 'Lava Bar', 'Sauna', 'EV Charging'] },
+    { id: 'ic-h3', name: '101 Hotel Reykjavik', stars: 4, type: 'Boutique Design Hotel', neighborhood: 'Central Reykjavik', price: 280, image: '🎭', description: 'The original boutique hotel of Reykjavik\'s 101 district — 38 individually designed rooms, an acclaimed restaurant, and the epicenter of Reykjavik\'s creative scene. Walk to the harbor, galleries, and nightlife.', amenities: ['In-House Restaurant & Bar', 'Nordic Design Rooms', 'City-Center Location', 'Concierge', 'Art Collection', 'Sauna'] }
+  ],
+  barcelona: [
+    { id: 'bc-h1', name: 'Mandarin Oriental Barcelona', stars: 5, type: 'Luxury Hotel', neighborhood: 'Passeig de Gràcia', price: 620, image: '🌹', description: 'On Barcelona\'s most elegant boulevard — the Passeig de Gràcia — Mandarin Oriental occupies a converted 1950s bank with a rooftop pool overlooking Gaudí\'s La Pedrera. Michelin-starred dining by Carme Ruscalleda.', amenities: ['Rooftop Pool & Bar', 'Michelin-Starred Restaurant', 'Mandarin Spa', 'Gaudí Views', 'Luxury Boutiques', 'Concierge'] },
+    { id: 'bc-h2', name: 'Casa Camper Barcelona', stars: 4, type: 'Design Boutique Hotel', neighborhood: 'El Raval', price: 265, image: '🎨', description: 'Born from the Camper footwear brand, this offbeat boutique hotel near Las Ramblas offers quirky design rooms, a 24-hour free snack bar, and rooftop hammocks — Barcelona\'s most playful place to stay.', amenities: ['24h Free Food & Drinks', 'Rooftop Terrace', 'Bicycles Included', 'Art & Design Rooms', 'El Raval Neighbourhood', 'Eco-Certified'] },
+    { id: 'bc-h3', name: 'Hotel Arts Barcelona', stars: 5, type: 'Skyscraper Resort', neighborhood: 'Barceloneta Beach', price: 490, image: '🏖️', description: 'A 44-story icon rising from Barceloneta beach — Arts offers direct Mediterranean access, a Frank Gehry fish sculpture landmark, rooftop infinity pool, and two Michelin-starred restaurants by the sea.', amenities: ['Beachfront Location', 'Rooftop Infinity Pool', '2 Michelin-Starred Restaurants', 'Luxury Spa', 'Marina Views', 'Private Beach Club'] }
+  ],
+  maldives: [
+    { id: 'mv-h1', name: 'Soneva Fushi', stars: 5, type: 'Private Island Resort', neighborhood: 'Baa Atoll (UNESCO Reserve)', price: 2800, image: '🌊', description: 'The original barefoot-luxury island resort — a UNESCO Biosphere Reserve with 63 private villas hidden in jungle, the world\'s finest open-air cinema, a chocolate room, and the clearest waters on earth.', amenities: ['Private Villa with Pool', 'Observatory', 'Chocolate & Ice Cream Room', 'SLOWLIFE Spa', 'House Reef Snorkeling', 'Seaplane Transfer'] },
+    { id: 'mv-h2', name: 'Anantara Veli Maldives', stars: 5, type: 'Overwater Villa Resort', neighborhood: 'South Malé Atoll', price: 1100, image: '🏝️', description: 'A adults-only overwater paradise with villa decks suspended directly above electric blue lagoons — sunrise yoga, snorkeling with reef sharks, and couples dinners on the sandbank beneath the Milky Way.', amenities: ['Overwater Villas', 'Overwater Spa', 'Adults Only', 'Reef Snorkeling', 'Sandbank Dining', 'Speedboat Transfer'] },
+    { id: 'mv-h3', name: 'COMO Cocoa Island', stars: 5, type: 'Dhoni-Shaped Boutique Resort', neighborhood: 'South Malé Atoll', price: 800, image: '🌺', description: 'Built on a dhoni-shaped private island of just 33 suites — COMO Cocoa is intimate, wellness-focused, and architecturally stunning. World-class diving, COMO Shambhala spa treatments, and exceptional Japanese-Maldivian fusion cuisine.', amenities: ['COMO Shambhala Spa', 'Scuba & Freediving', 'Water Sports', 'Japanese-Maldivian Restaurant', 'Yoga & Meditation', 'Speedboat Transfer'] }
+  ],
+  tokyo: [
+    { id: 'tk-h1', name: 'The Peninsula Tokyo', stars: 5, type: 'Luxury City Hotel', neighborhood: 'Hibiya / Imperial Palace', price: 760, image: '🗼', description: 'Adjacent to the Imperial Palace gardens and overlooking the iconic Hibiya crossing — The Peninsula Tokyo is Japan\'s finest urban hotel, with rooms facing Mt. Fuji on clear days and a rooftop bar above the city.', amenities: ['Rooftop Bar & Pool', 'Peter Restaurant & Bar', 'The Peninsula Spa', 'Imperial Palace Views', 'Fleet of BMW 7-Series', 'Helicopter Tours'] },
+    { id: 'tk-h2', name: 'Trunk Hotel', stars: 4, type: 'Lifestyle Boutique Hotel', neighborhood: 'Shibuya / Daikanyama', price: 380, image: '🎌', description: 'A locally-minded lifestyle hotel in hip Daikanyama — rooftop BBQ overlooking the Shibuya skyline, curated Tokyo retail, a natural wine bar, and 15 individually designed rooms celebrating Tokyo\'s creative subcultures.', amenities: ['Rooftop BBQ Terrace', 'Natural Wine Bar', 'Design Retail', 'Sauna', 'Bike Share', 'Local Neighbourhood Guide'] },
+    { id: 'tk-h3', name: 'Park Hyatt Tokyo', stars: 5, type: 'Skyscraper Luxury Hotel', neighborhood: 'Shinjuku', price: 620, image: '✨', description: 'Occupying floors 39–52 of the Shinjuku Park Tower — immortalized in Lost in Translation — Park Hyatt Tokyo offers one of the world\'s great city views, a sky-high pool looking at Mt. Fuji, and the legendary New York Bar.', amenities: ['Sky-High Pool with Mt. Fuji Views', 'New York Bar (47th Floor)', 'Club On The Park Spa', 'The Peak Lounge', 'Tokyo Cityscape Views', '3 Signature Restaurants'] }
+  ]
+};
 
 // ===== ITINERARY DATA =====
 const itineraryData = {
@@ -395,7 +485,7 @@ function updateNavbar(pageId) {
   navbar.className = 'navbar';
   if (pageId === 'page-home') {
     navbar.classList.add('transparent');
-  } else if (['page-dashboard', 'page-quiz', 'page-destinations', 'page-itinerary'].includes(pageId)) {
+  } else if (['page-dashboard', 'page-quiz', 'page-destinations', 'page-flights', 'page-hotels', 'page-itinerary'].includes(pageId)) {
     navbar.classList.add('dark-mode');
   } else {
     navbar.classList.add('solid');
@@ -435,6 +525,8 @@ async function logout() {
   state.quizAnswers = [];
   state.personalityType = null;
   state.selectedDestination = null;
+  state.selectedFlight = null;
+  state.selectedHotel = null;
   state.quizStep = 0;
   showPage('page-home');
   showToast('You have been signed out.', 'info');
@@ -611,10 +703,17 @@ function updateDashboard() {
   const itinStatus = document.getElementById('itin-card-status');
   const itinCta = document.getElementById('itin-card-cta');
   if (itinStatus && itinCta) {
-    if (state.selectedDestination) {
-      const dest = allDestinations.find(d => d.id === state.selectedDestination);
+    if (state.selectedHotel && state.selectedFlight) {
       itinStatus.className = 'status active';
-      itinStatus.textContent = `✓ ${dest ? dest.name : 'Destination'} selected`;
+      itinStatus.textContent = `✓ Flight & hotel selected`;
+      itinCta.className = 'btn btn-primary btn-sm';
+    } else if (state.selectedFlight) {
+      itinStatus.className = 'status pending';
+      itinStatus.textContent = `✈️ Flight chosen — pick a hotel`;
+      itinCta.className = 'btn btn-primary btn-sm';
+    } else if (state.selectedDestination) {
+      itinStatus.className = 'status pending';
+      itinStatus.textContent = `🗺️ Destination set — choose a flight`;
       itinCta.className = 'btn btn-primary btn-sm';
     } else if (state.personalityType) {
       itinStatus.className = 'status locked';
@@ -800,9 +899,159 @@ function selectDestination(id) {
 
 function selectAndGoToItinerary(id) {
   state.selectedDestination = id;
+  state.selectedFlight = null;
+  state.selectedHotel = null;
+  if (state.user) updateDashboard();
+  showPage('page-flights');
+  renderFlights(id);
+}
+
+// ===== FLIGHTS =====
+function renderFlights(destId) {
+  const dest = allDestinations.find(d => d.id === destId);
+  if (!dest) return;
+  const nameEl = document.getElementById('flights-dest-name');
+  if (nameEl) nameEl.textContent = dest.name;
+
+  const flights = flightData[destId] || [];
+  const grid = document.getElementById('flights-grid');
+  if (!grid) return;
+
+  grid.innerHTML = flights.map(f => `
+    <div class="flight-card" id="flight-${f.id}" onclick="selectFlight('${f.id}')">
+      <div class="flight-card-top">
+        <div class="flight-airline">
+          <span class="flight-badge">${f.badge}</span>
+          <div>
+            <div class="flight-airline-name">${f.airline}</div>
+            <div class="flight-number">${f.flightNumber}</div>
+          </div>
+        </div>
+        <span class="flight-class-badge ${f.class.toLowerCase().includes('business') || f.class.toLowerCase().includes('first') ? 'premium' : ''}">${f.class}</span>
+      </div>
+      <div class="flight-route">
+        <div class="flight-endpoint">
+          <div class="flight-time">${f.departure}</div>
+          <div class="flight-city">${f.from}</div>
+        </div>
+        <div class="flight-line-area">
+          <div class="flight-duration">${f.duration}</div>
+          <div class="flight-line"><span></span></div>
+          <div class="flight-stops-label">${f.stops}</div>
+        </div>
+        <div class="flight-endpoint right">
+          <div class="flight-time">${f.arrival}</div>
+          <div class="flight-city">${f.to}</div>
+        </div>
+      </div>
+      <div class="flight-perks">
+        ${f.perks.map(p => `<span class="perk-tag">${p}</span>`).join('')}
+      </div>
+      <div class="flight-card-footer">
+        <div class="flight-price-area">
+          <div class="flight-price">$${f.price.toLocaleString()}</div>
+          <div class="flight-price-label">per person</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();selectFlight('${f.id}')">Select Flight →</button>
+      </div>
+    </div>`).join('');
+
+  const continueBtn = document.getElementById('flights-continue-btn');
+  if (continueBtn) continueBtn.disabled = !state.selectedFlight;
+  if (state.selectedFlight) {
+    document.getElementById(`flight-${state.selectedFlight.id}`)?.classList.add('selected');
+  }
+}
+
+function selectFlight(id) {
+  const flights = flightData[state.selectedDestination] || [];
+  const flight = flights.find(f => f.id === id);
+  if (!flight) return;
+  state.selectedFlight = flight;
+  document.querySelectorAll('.flight-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`flight-${id}`)?.classList.add('selected');
+  const continueBtn = document.getElementById('flights-continue-btn');
+  if (continueBtn) continueBtn.disabled = false;
+  setTimeout(() => {
+    showPage('page-hotels');
+    renderHotels(state.selectedDestination);
+  }, 250);
+}
+
+// ===== HOTELS =====
+function renderHotels(destId) {
+  const dest = allDestinations.find(d => d.id === destId);
+  if (!dest) return;
+  const nameEl = document.getElementById('hotels-dest-name');
+  if (nameEl) nameEl.textContent = dest.name;
+
+  const hotels = hotelData[destId] || [];
+  const grid = document.getElementById('hotels-grid');
+  if (!grid) return;
+
+  grid.innerHTML = hotels.map(h => `
+    <div class="hotel-card" id="hotel-${h.id}" onclick="selectHotel('${h.id}')">
+      <div class="hotel-img-area">${h.image}</div>
+      <div class="hotel-body">
+        <div class="hotel-card-top">
+          <span class="hotel-type-badge">${h.type}</span>
+          <div class="hotel-price-area">
+            <span class="hotel-price">$${h.price.toLocaleString()}</span>
+            <span class="hotel-price-label">/night</span>
+          </div>
+        </div>
+        <h3 class="hotel-name">${h.name}</h3>
+        <div class="hotel-stars">${'★'.repeat(h.stars)}${'☆'.repeat(5 - h.stars)}</div>
+        <div class="hotel-neighborhood">📍 ${h.neighborhood}</div>
+        <p class="hotel-description">${h.description}</p>
+        <div class="hotel-amenities">
+          ${h.amenities.map(a => `<span class="amenity-tag">${a}</span>`).join('')}
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="event.stopPropagation();selectHotel('${h.id}')">
+          Select This Hotel →
+        </button>
+      </div>
+    </div>`).join('');
+
+  const continueBtn = document.getElementById('hotels-continue-btn');
+  if (continueBtn) continueBtn.disabled = !state.selectedHotel;
+  if (state.selectedHotel) {
+    document.getElementById(`hotel-${state.selectedHotel.id}`)?.classList.add('selected');
+  }
+}
+
+function selectHotel(id) {
+  const hotels = hotelData[state.selectedDestination] || [];
+  const hotel = hotels.find(h => h.id === id);
+  if (!hotel) return;
+  state.selectedHotel = hotel;
+  document.querySelectorAll('.hotel-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`hotel-${id}`)?.classList.add('selected');
+  const continueBtn = document.getElementById('hotels-continue-btn');
+  if (continueBtn) continueBtn.disabled = false;
+  setTimeout(() => {
+    if (state.user) updateDashboard();
+    showPage('page-itinerary');
+    renderItinerary(state.selectedDestination);
+  }, 250);
+}
+
+function goToFlights() {
+  showPage('page-flights');
+  renderFlights(state.selectedDestination);
+}
+
+function goToHotels() {
+  if (!state.selectedFlight) { showToast('Please select a flight first.', 'info'); return; }
+  showPage('page-hotels');
+  renderHotels(state.selectedDestination);
+}
+
+function goToItineraryFromHotels() {
+  if (!state.selectedHotel) { showToast('Please select a hotel first.', 'info'); return; }
   if (state.user) updateDashboard();
   showPage('page-itinerary');
-  renderItinerary(id);
+  renderItinerary(state.selectedDestination);
 }
 
 // ===== ITINERARY =====
@@ -816,6 +1065,8 @@ function renderItinerary(destId) {
   document.getElementById('itin-title').textContent = itin.title;
   document.getElementById('itin-subtitle').textContent = `A ${pt.title} itinerary for ${dest.name}, ${dest.country}`;
   document.getElementById('itin-personality').textContent = `${pt.emoji} ${pt.title}`;
+
+  updateTripSummaryBar();
 
   const container = document.getElementById('itinerary-days');
   const timeIcons = { morning: '🌅', afternoon: '☀️', evening: '🌙' };
@@ -845,6 +1096,43 @@ function renderItinerary(destId) {
     </div>`).join('');
 }
 
+function updateTripSummaryBar() {
+  const bar = document.getElementById('trip-summary-bar');
+  if (!bar) return;
+  if (!state.selectedFlight && !state.selectedHotel) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const f = state.selectedFlight;
+  const h = state.selectedHotel;
+  const totalEstimate = (f ? f.price : 0) + (h ? h.price * 5 : 0);
+  bar.innerHTML = `
+    <div class="summary-pill">
+      <span class="pill-icon">✈️</span>
+      <div>
+        <div class="pill-label">Flight</div>
+        <div class="pill-value">${f ? `${f.airline} · ${f.flightNumber}` : '—'}</div>
+        <div class="pill-detail">${f ? `${f.from} → ${f.to} · ${f.stops} · ${f.class}` : ''}</div>
+      </div>
+      <div class="pill-price">${f ? `$${f.price.toLocaleString()}` : ''}</div>
+    </div>
+    <div class="summary-pill">
+      <span class="pill-icon">🏨</span>
+      <div>
+        <div class="pill-label">Hotel</div>
+        <div class="pill-value">${h ? h.name : '—'}</div>
+        <div class="pill-detail">${h ? `${'★'.repeat(h.stars)} · ${h.neighborhood}` : ''}</div>
+      </div>
+      <div class="pill-price">${h ? `$${h.price.toLocaleString()}/night` : ''}</div>
+    </div>
+    <div class="summary-pill total">
+      <span class="pill-icon">💰</span>
+      <div>
+        <div class="pill-label">Est. Total</div>
+        <div class="pill-value">$${totalEstimate.toLocaleString()}</div>
+        <div class="pill-detail">Flight + 5 nights hotel</div>
+      </div>
+    </div>`;
+}
+
 async function saveItinerary() {
   if (!state.user || !getToken()) {
     showToast('Please log in to save your itinerary.', 'info');
@@ -867,7 +1155,9 @@ async function saveItinerary() {
         destinationId: dest.id,
         destinationName: dest.name,
         personalityType: state.personalityType,
-        itinerary: itin
+        itinerary: itin,
+        flight: state.selectedFlight || null,
+        hotel: state.selectedHotel || null
       })
     });
     state.savedItinerary = true;

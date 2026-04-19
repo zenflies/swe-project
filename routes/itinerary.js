@@ -10,7 +10,7 @@ router.use(requireAuth);
 // ── POST /api/itinerary  — save (upsert) an itinerary ─────────────────────────
 router.post('/', (req, res) => {
   try {
-    const { destinationId, destinationName, personalityType, itinerary } = req.body;
+    const { destinationId, destinationName, personalityType, itinerary, flight, hotel } = req.body;
 
     if (!destinationId || !destinationName || !personalityType || !itinerary) {
       return res.status(400).json({
@@ -20,18 +20,22 @@ router.post('/', (req, res) => {
 
     const db = getDB();
     const itineraryJson = JSON.stringify(itinerary);
+    const flightJson    = flight ? JSON.stringify(flight) : null;
+    const hotelJson     = hotel  ? JSON.stringify(hotel)  : null;
 
     // Upsert: if user already has a saved itinerary for this destination, overwrite it
     db.prepare(`
-      INSERT INTO itineraries (user_id, destination_id, destination_name, personality_type, itinerary_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO itineraries (user_id, destination_id, destination_name, personality_type, itinerary_json, flight_json, hotel_json, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT (user_id, destination_id)
       DO UPDATE SET
         destination_name = excluded.destination_name,
         personality_type = excluded.personality_type,
         itinerary_json   = excluded.itinerary_json,
+        flight_json      = excluded.flight_json,
+        hotel_json       = excluded.hotel_json,
         updated_at       = datetime('now')
-    `).run(req.user.id, destinationId, destinationName, personalityType, itineraryJson);
+    `).run(req.user.id, destinationId, destinationName, personalityType, itineraryJson, flightJson, hotelJson);
 
     const saved = db.prepare(`
       SELECT * FROM itineraries WHERE user_id = ? AND destination_id = ?
@@ -159,6 +163,8 @@ function formatItinerary(row) {
     destinationName: row.destination_name,
     personalityType: row.personality_type,
     itinerary: JSON.parse(row.itinerary_json),
+    flight: row.flight_json ? JSON.parse(row.flight_json) : null,
+    hotel:  row.hotel_json  ? JSON.parse(row.hotel_json)  : null,
     savedAt: row.saved_at,
     updatedAt: row.updated_at
   };

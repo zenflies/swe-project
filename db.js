@@ -48,13 +48,19 @@ function initDB() {
       destination_id   TEXT    NOT NULL,
       destination_name TEXT    NOT NULL,
       personality_type TEXT    NOT NULL,
-      itinerary_json   TEXT    NOT NULL,   -- full itinerary object
+      itinerary_json   TEXT    NOT NULL,   -- day-by-day itinerary
+      flight_json      TEXT,               -- selected flight object
+      hotel_json       TEXT,               -- selected hotel object
       saved_at         TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at       TEXT    NOT NULL DEFAULT (datetime('now')),
       -- one saved itinerary per user per destination
       UNIQUE (user_id, destination_id)
     );
   `);
+
+  // Add flight_json / hotel_json to existing databases that predate this column
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN flight_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN hotel_json TEXT`); } catch (_) {}
 
   console.log('✅ Database initialised at', DB_PATH);
   return db;

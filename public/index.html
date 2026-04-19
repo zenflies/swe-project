@@ -635,6 +635,50 @@
   </div>
 </div><!-- /page-destinations -->
 
+<!-- ===== PAGE: FLIGHTS ===== -->
+<div class="page" id="page-flights">
+  <div class="flights-page">
+    <div class="flights-container">
+      <div class="flights-header">
+        <div class="section-tag">Step 2 of 3 — Choose Your Flight</div>
+        <h1>Flights to <span id="flights-dest-name">your destination</span></h1>
+        <p style="color:#6B7280;max-width:500px;margin:0 auto;font-size:0.95rem">
+          Select the flight that suits your budget and travel style. Prices shown are per person.
+        </p>
+      </div>
+      <div class="flights-grid" id="flights-grid">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="page-nav-footer">
+        <button onclick="showPage('page-destinations');renderDestinations()" class="btn btn-outline btn-lg">← Back to Destinations</button>
+        <button id="flights-continue-btn" onclick="goToHotels()" class="btn btn-primary btn-lg" disabled>Continue to Hotels →</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-flights -->
+
+<!-- ===== PAGE: HOTELS ===== -->
+<div class="page" id="page-hotels">
+  <div class="hotels-page">
+    <div class="hotels-container">
+      <div class="hotels-header">
+        <div class="section-tag">Step 3 of 3 — Choose Your Hotel</div>
+        <h1>Hotels in <span id="hotels-dest-name">your destination</span></h1>
+        <p style="color:#6B7280;max-width:500px;margin:0 auto;font-size:0.95rem">
+          Pick where you'll rest, recharge, and call home during your trip. Prices are per night.
+        </p>
+      </div>
+      <div class="hotels-grid" id="hotels-grid">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="page-nav-footer">
+        <button onclick="goToFlights()" class="btn btn-outline btn-lg">← Back to Flights</button>
+        <button id="hotels-continue-btn" onclick="goToItineraryFromHotels()" class="btn btn-primary btn-lg" disabled>View My Itinerary →</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-hotels -->
+
 <!-- ===== PAGE: ITINERARY ===== -->
 <div class="page" id="page-itinerary">
   <div class="itinerary-page">
@@ -666,6 +710,9 @@
           <button onclick="printItinerary()" class="btn btn-primary btn-sm">🖨 Print / Export</button>
         </div>
       </div>
+
+      <!-- Trip Summary Bar -->
+      <div id="trip-summary-bar" style="display:none"></div>
 
       <!-- Day Cards -->
       <div id="itinerary-days">
@@ -960,15 +1007,15 @@
   }
 
   function viewItinerary() {
-    if (state.selectedDestination) {
-      showPage('page-itinerary');
-      renderItinerary(state.selectedDestination);
-    } else if (state.personalityType) {
-      goToDestinations();
-      showToast('Choose a destination to generate your itinerary.', 'info');
+    if (!state.selectedDestination) {
+      if (state.personalityType) { goToDestinations(); showToast('Choose a destination to continue.', 'info'); }
+      else { startQuiz(); showToast('Complete the quiz first!', 'info'); }
+    } else if (!state.selectedFlight) {
+      showPage('page-flights'); renderFlights(state.selectedDestination);
+    } else if (!state.selectedHotel) {
+      showPage('page-hotels'); renderHotels(state.selectedDestination);
     } else {
-      startQuiz();
-      showToast('Complete the quiz first to get a personalized itinerary.', 'info');
+      showPage('page-itinerary'); renderItinerary(state.selectedDestination);
     }
   }
 
