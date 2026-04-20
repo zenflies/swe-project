@@ -1,0 +1,27 @@
+[project]
+name = "chromadb_document_processor"
+version = "0.1.0"
+description = "chromadb_document_processor using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "crewai[file-processing,google-genai,litellm,tools]==1.13.0",
+]
+
+[project.scripts]
+chromadb_document_processor = "chromadb_document_processor.main:run"
+run_crew = "chromadb_document_processor.main:run"
+train = "chromadb_document_processor.main:train"
+replay = "chromadb_document_processor.main:replay"
+test = "chromadb_document_processor.main:test"
+run_with_trigger = "chromadb_document_processor.main:run_with_trigger"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
+
+[tool.uv]
+override-dependencies = ["litellm<=1.82.6"]

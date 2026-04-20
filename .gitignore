@@ -3,3 +3,12 @@ node_modules/
 *.db
 *.db-shm
 *.db-wal
+.env
+__pycache__/
+.DS_Store
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak

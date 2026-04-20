@@ -1,0 +1,36 @@
+---
+search_flights:
+  description: >
+    The user has requested: "{query}".
+
+    Step 1 — Resolve dates using today's date from your context:
+      - Interpret any relative, vague, or natural language date/time references
+        (e.g., "next month", "in 3 weeks", "early June", "this summer") into
+        a concrete outbound_date in YYYY-MM-DD format.
+      - If a stay duration is mentioned (e.g., "for 2 weeks", "10-day trip",
+        "2-3 weeks"), compute return_date = outbound_date + duration.
+        For ranges, use the midpoint (e.g., "2-3 weeks" → 18 days).
+      - If the user explicitly says one-way or gives no duration/return hint,
+        leave return_date empty.
+
+    Step 2 — Resolve airports:
+      - Convert city names or airport names to IATA codes.
+      - If multiple airports are possible for a city, default to the most commonly used one
+        (e.g., "New York" defaults to JFK, not LGA or EWR).
+
+    Step 3 — Search:
+      - Call the Flight Search tool with: origin, destination, outbound_date,
+        and return_date (if round-trip).
+
+    Step 4 — Return results:
+      - Return ONLY the raw JSON object produced by the Flight Search tool as your
+        final answer. Do not add narrative text, summaries, or markdown formatting.
+      - Your entire response must be valid JSON in this exact shape:
+        {"flights": [...]}
+
+  expected_output: >
+    A valid JSON object with a single top-level key "flights" whose value is an
+    array of flight objects. Each object must have these keys: id, airline, badge,
+    flightNumber, from, to, departure, arrival, duration, stops, price, class, perks.
+    No surrounding text, no markdown code fences — raw JSON only.
+  agent: flight_search_specialist

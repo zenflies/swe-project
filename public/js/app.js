@@ -907,18 +907,47 @@ function selectAndGoToItinerary(id) {
 }
 
 // ===== FLIGHTS =====
-function renderFlights(destId) {
+async function renderFlights(destId) {
   const dest = allDestinations.find(d => d.id === destId);
   if (!dest) return;
   const nameEl = document.getElementById('flights-dest-name');
   if (nameEl) nameEl.textContent = dest.name;
 
-  const flights = flightData[destId] || [];
   const grid = document.getElementById('flights-grid');
   if (!grid) return;
+  grid.innerHTML = `<div style="text-align:center;padding:60px;color:#94a3b8">Searching live flights...</div>`;
+
+  let flights;
+  try {
+    const data = await apiFetch('/flights', {
+      method: 'POST',
+      body: JSON.stringify({ query: `Flights to ${dest.name} departing next month` })
+    });
+    if (data.flights && data.flights.length) {
+      flights = data.flights.map((f, i) => ({
+        id: `live-${i}`,
+        badge: '✈️',
+        airline: f.airline || 'Unknown',
+        flightNumber: f.flight_number || '',
+        from: f.origin || '',
+        to: f.destination || '',
+        departure: f.departure_time || '',
+        arrival: f.arrival_time || '',
+        duration: f.duration || '',
+        stops: f.stops || 'Nonstop',
+        price: Number(f.price) || 0,
+        class: 'Economy',
+        perks: []
+      }));
+    } else {
+      flights = flightData[destId] || [];
+    }
+  } catch (err) {
+    flights = flightData[destId] || [];
+  }
 
   grid.innerHTML = flights.map(f => `
-    <div class="flight-card" id="flight-${f.id}" onclick="selectFlight('${f.id}')">
+    <div class="flight-card" id="flight-${f.id}" onclick="selectFlight('${f.id}', ${JSON.stringify(flights).replace(/"/g, '&quot;')})">
       <div class="flight-card-top">
         <div class="flight-airline">
           <span class="flight-badge">${f.badge}</span>
@@ -952,19 +981,17 @@ function renderFlights(destId) {
           <div class="flight-price">$${f.price.toLocaleString()}</div>
           <div class="flight-price-label">per person</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();selectFlight('${f.id}')">Select Flight →</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();selectFlight('${f.id}', ${JSON.stringify(flights).replace(/"/g, '&quot;')})">Select Flight →</button>
       </div>
     </div>`).join('');
 
   const continueBtn = document.getElementById('flights-continue-btn');
   if (continueBtn) continueBtn.disabled = !state.selectedFlight;
-  if (state.selectedFlight) {
-    document.getElementById(`flight-${state.selectedFlight.id}`)?.classList.add('selected');
-  }
 }
 
-function selectFlight(id) {
-  const flights = flightData[state.selectedDestination] || [];
+
+function selectFlight(id, flightList) {
+  const flights = flightList || flightData[state.selectedDestination] || [];
   const flight = flights.find(f => f.id === id);
   if (!flight) return;
   state.selectedFlight = flight;
@@ -977,6 +1004,7 @@ function selectFlight(id) {
     renderHotels(state.selectedDestination);
   }, 250);
 }
+
 
 // ===== HOTELS =====
 function renderHotels(destId) {

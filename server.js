@@ -55,6 +55,22 @@ ${message}`;
     res.status(500).json({ error: 'Sorry, I am having trouble connecting to the AI.' });
   }
 });
+app.post('/api/flights', async (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: 'query required', flights: [] });
+  try {
+    const response = await fetch('http://localhost:5000/flights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Flight agent unreachable:', err.message);
+    res.status(502).json({ error: 'Flight agent unavailable', flights: [] });
+  }
+});
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
