@@ -483,6 +483,14 @@
         </div>
       </div>
 
+      <!-- Saved Trips -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;margin-top:8px">
+        <h2 style="font-size:1.3rem">Saved Trips</h2>
+      </div>
+      <div id="saved-trips-list" style="margin-bottom:40px">
+        <p style="color:#6B7280;font-size:0.95rem">No saved trips yet. Complete the quiz, choose a destination, and click "Save Itinerary".</p>
+      </div>
+
       <!-- Personality Types Preview -->
       <h2 style="margin-bottom:20px;font-size:1.3rem;margin-top:8px">Travel Personality Types</h2>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:40px">
@@ -582,6 +590,24 @@
         <p style="color:#6B7280;max-width:500px;margin:0 auto;font-size:0.95rem">
           Select the flight that suits your budget and travel style. Prices shown are per person.
         </p>
+        <div class="trip-date-picker">
+          <div class="date-field">
+            <label for="trip-departure-city">Departure City</label>
+            <input type="text" id="trip-departure-city" placeholder="New York (JFK)"
+              onblur="handleDepartureCityChange(this.value)"
+              onkeydown="if(event.key==='Enter'){this.blur()}" />
+          </div>
+          <div class="date-arrow">✈️</div>
+          <div class="date-field">
+            <label for="trip-depart-date">Departure Date</label>
+            <input type="date" id="trip-depart-date" onchange="handleDateChange(this.value)" />
+          </div>
+          <div class="date-arrow">→</div>
+          <div class="date-field">
+            <label>Return Date <span class="date-note">(5 days at destination)</span></label>
+            <div class="date-display" id="trip-return-date">—</div>
+          </div>
+        </div>
       </div>
       <div class="flights-grid" id="flights-grid">
         <!-- Rendered by JS -->
@@ -994,7 +1020,6 @@
     }
   }
 
-  document.getElementById('contact-form').removeEventListener('submit', handleContact);
   document.getElementById('contact-form').addEventListener('submit', handleContactOverride);
 
   function mockSocialLogin(provider) {

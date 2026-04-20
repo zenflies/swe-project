@@ -37,8 +37,104 @@ const state = {
   selectedDestination: null,
   selectedFlight: null,
   selectedHotel: null,
-  savedItinerary: false
+  savedItinerary: false,
+  aiDestinations: null,
+  aiPackage: null,
+  tripStartDate: null,
+  selectedReturnFlight: null,
+  departureCity: 'New York (JFK)'
 };
+
+// ===== AI DATE / CITY HELPERS =====
+function defaultDepartureDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toISOString().split('T')[0];
+}
+
+function returnDateFor(depDate) {
+  const d = new Date(depDate);
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().split('T')[0];
+}
+
+function initDatePicker() {
+  const dateInput = document.getElementById('trip-depart-date');
+  const cityInput = document.getElementById('trip-departure-city');
+  if (!state.tripStartDate) state.tripStartDate = defaultDepartureDate();
+  if (dateInput) {
+    dateInput.value = state.tripStartDate;
+    const ret = document.getElementById('trip-return-date');
+    if (ret) ret.textContent = returnDateFor(state.tripStartDate);
+  }
+  if (cityInput) cityInput.value = state.departureCity;
+}
+
+function handleDateChange(value) {
+  if (!value) return;
+  state.tripStartDate = value;
+  const ret = document.getElementById('trip-return-date');
+  if (ret) ret.textContent = returnDateFor(value);
+  reloadAIPackage();
+}
+
+function handleDepartureCityChange(value) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === state.departureCity) return;
+  state.departureCity = trimmed;
+  reloadAIPackage();
+}
+
+async function reloadAIPackage() {
+  if (!state.selectedDestination || !state.personalityType) return;
+  const dest = findDestination(state.selectedDestination);
+  if (!dest) return;
+
+  state.selectedFlight = null;
+  state.selectedReturnFlight = null;
+  state.aiPackage = null;
+  renderFlights(state.selectedDestination);
+
+  const depDate = state.tripStartDate || defaultDepartureDate();
+  const retDate = returnDateFor(depDate);
+
+  const [pkgRes, rfRes] = await Promise.allSettled([
+    apiFetch('/ai/package', {
+      method: 'POST',
+      body: JSON.stringify({
+        destination: dest,
+        personalityType: state.personalityType,
+        departureDate: depDate,
+        returnDate: retDate,
+        departureCity: state.departureCity
+      })
+    }),
+    apiFetch('/ai/return-flights', {
+      method: 'POST',
+      body: JSON.stringify({ destination: dest, returnDate: retDate, departureCity: state.departureCity })
+    })
+  ]);
+
+  const pkg = pkgRes.status === 'fulfilled' ? pkgRes.value : {};
+  const rf  = rfRes.status  === 'fulfilled' ? rfRes.value  : {};
+
+  state.aiPackage = {
+    flights: pkg.flights || [],
+    hotels: pkg.hotels || [],
+    itinerary: pkg.itinerary || null,
+    returnFlights: rf.returnFlights || []
+  };
+
+  renderFlights(state.selectedDestination);
+}
+
+function findDestination(id) {
+  if (state.aiDestinations) {
+    const found = state.aiDestinations.find(d => d.id === id);
+    if (found) return found;
+  }
+  return allDestinations.find(d => d.id === id) || null;
+}
 
 // ===== QUIZ DATA =====
 const quizQuestions = [
@@ -476,6 +572,7 @@ function showPage(pageId) {
     state.currentPage = pageId;
     window.scrollTo(0, 0);
     updateNavbar(pageId);
+    if (pageId === 'page-dashboard' && state.user) renderSavedTrips();
   }
 }
 
@@ -622,21 +719,138 @@ async function handleSignup(e) {
 async function loadUserState() {
   if (!getToken()) return;
   try {
-    // Load latest quiz result
     const quizData = await apiFetch('/itinerary/quiz/latest').catch(() => null);
     if (quizData) {
       state.personalityType = quizData.personalityType;
       state.quizAnswers = quizData.answers;
     }
-    // Load saved itineraries
     const itinData = await apiFetch('/itinerary').catch(() => null);
     if (itinData && itinData.itineraries.length > 0) {
-      // Pre-select the most recently updated one
-      state.selectedDestination = itinData.itineraries[0].destinationId;
+      const latest = itinData.itineraries[0];
+      state.selectedDestination = latest.destinationId;
+      // Restore AI package so flights/hotels/itinerary are available
+      if (latest.availableFlights || latest.availableHotels || latest.itinerary) {
+        state.aiPackage = {
+          flights:       latest.availableFlights       || [],
+          hotels:        latest.availableHotels        || [],
+          itinerary:     latest.itinerary              || null,
+          returnFlights: latest.availableReturnFlights || []
+        };
+      }
+      if (latest.destination) {
+        state.aiDestinations = state.aiDestinations || [];
+        if (!state.aiDestinations.find(d => d.id === latest.destination.id)) {
+          state.aiDestinations.push(latest.destination);
+        }
+      }
+      state.selectedFlight       = latest.flight       || null;
+      state.selectedReturnFlight = latest.returnFlight  || null;
+      state.selectedHotel        = latest.hotel         || null;
+      state.tripStartDate        = latest.departureDate || null;
+      state.savedItinerary       = true;
     }
   } catch (err) {
-    // Silent fail — not critical
     console.warn('Could not load user state:', err);
+  }
+}
+
+async function renderSavedTrips() {
+  const container = document.getElementById('saved-trips-list');
+  if (!container) return;
+
+  const itinData = await apiFetch('/itinerary').catch(() => null);
+  if (!itinData || itinData.itineraries.length === 0) {
+    container.innerHTML = `<p style="color:#6B7280;font-size:0.95rem">No saved trips yet. Complete the quiz, choose a destination, and click "Save Itinerary".</p>`;
+    return;
+  }
+
+  container.innerHTML = itinData.itineraries.map(itin => {
+    const dest = itin.destination || {};
+    const gradient = dest.gradient || 'linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%)';
+    const emoji    = dest.emoji || '✈️';
+    const flight   = itin.flight;
+    const retFlight = itin.returnFlight;
+    const hotel    = itin.hotel;
+    const depDate  = itin.departureDate ? new Date(itin.departureDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+    const updDate  = new Date(itin.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return `
+      <div style="background:white;border-radius:20px;overflow:hidden;border:1px solid #E5E7EB;margin-bottom:16px;display:flex;align-items:stretch">
+        <div style="width:100px;min-height:100px;background:${gradient};display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0">${emoji}</div>
+        <div style="padding:16px 20px;flex:1;min-width:0">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:700;font-size:1.05rem;color:#111827">${itin.destinationName}</div>
+              <div style="font-size:0.82rem;color:#6B7280;margin-top:2px">${dest.country || ''} ${depDate ? '· Departs ' + depDate : ''}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
+              <button class="btn btn-primary btn-sm" onclick="loadSavedTrip('${itin.destinationId}')">View →</button>
+              <button class="btn btn-outline btn-sm" onclick="deleteSavedTrip('${itin.destinationId}', this)">Delete</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+            ${flight ? `<span style="font-size:0.8rem;color:#374151">✈️ ${flight.airline} · ${flight.class}</span>` : ''}
+            ${retFlight ? `<span style="font-size:0.8rem;color:#374151">↩ ${retFlight.airline} · ${retFlight.class}</span>` : ''}
+            ${hotel  ? `<span style="font-size:0.8rem;color:#374151">🏨 ${hotel.name}</span>` : ''}
+            <span style="font-size:0.8rem;color:#9CA3AF;margin-left:auto">Saved ${updDate}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadSavedTrip(destinationId) {
+  const itinData = await apiFetch(`/itinerary/${destinationId}`).catch(() => null);
+  if (!itinData) { showToast('Could not load saved trip.', 'info'); return; }
+
+  const saved = itinData.itinerary;
+  state.selectedDestination  = saved.destinationId;
+  state.personalityType      = saved.personalityType || state.personalityType;
+  state.selectedFlight       = saved.flight          || null;
+  state.selectedReturnFlight = saved.returnFlight    || null;
+  state.selectedHotel        = saved.hotel           || null;
+  state.tripStartDate        = saved.departureDate   || null;
+  state.savedItinerary       = true;
+
+  if (saved.availableFlights || saved.availableHotels || saved.itinerary) {
+    state.aiPackage = {
+      flights:       saved.availableFlights       || [],
+      hotels:        saved.availableHotels        || [],
+      itinerary:     saved.itinerary              || null,
+      returnFlights: saved.availableReturnFlights || []
+    };
+  }
+  if (saved.destination) {
+    state.aiDestinations = state.aiDestinations || [];
+    if (!state.aiDestinations.find(d => d.id === saved.destination.id)) {
+      state.aiDestinations.push(saved.destination);
+    }
+  }
+
+  showPage('page-itinerary');
+  renderItinerary(state.selectedDestination);
+  showToast(`Loaded your ${saved.destinationName} trip!`);
+}
+
+async function deleteSavedTrip(destinationId, btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await apiFetch(`/itinerary/${destinationId}`, { method: 'DELETE' });
+    if (state.selectedDestination === destinationId) {
+      state.selectedDestination = null;
+      state.aiPackage = null;
+      state.selectedFlight = null;
+      state.selectedReturnFlight = null;
+      state.selectedHotel = null;
+    }
+    showToast('Trip deleted.');
+    renderSavedTrips();
+    updateDashboard();
+  } catch (err) {
+    showToast('Could not delete trip.', 'info');
+    btn.disabled = false;
+    btn.textContent = 'Delete';
   }
 }
 
@@ -864,16 +1078,30 @@ function goToDestinations() {
   renderDestinations();
 }
 
-function renderDestinations() {
+async function renderDestinations() {
   const pt = personalityTypes[state.personalityType];
   document.getElementById('dest-personality-emoji').textContent = pt.emoji;
   document.getElementById('dest-personality-type').textContent = pt.title;
 
-  const matched = allDestinations.filter(d => d.types.includes(state.personalityType)).sort((a, b) => b.match - a.match);
-  const others = allDestinations.filter(d => !d.types.includes(state.personalityType)).slice(0, Math.max(0, 4 - matched.length));
-  const destinations = [...matched, ...others].slice(0, 4);
-
   const grid = document.getElementById('destinations-grid');
+  grid.innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div><p>Finding perfect destinations for you…</p></div>`;
+
+  let destinations;
+  try {
+    const data = await apiFetch('/ai/destinations', {
+      method: 'POST',
+      body: JSON.stringify({ personalityType: state.personalityType, answers: state.quizAnswers })
+    });
+    destinations = data.destinations || [];
+    state.aiDestinations = destinations;
+  } catch (err) {
+    console.warn('AI destinations failed, using fallback:', err);
+    const matched = allDestinations.filter(d => d.types.includes(state.personalityType)).sort((a, b) => b.match - a.match);
+    const others = allDestinations.filter(d => !d.types.includes(state.personalityType)).slice(0, Math.max(0, 4 - matched.length));
+    destinations = [...matched, ...others].slice(0, 4);
+    state.aiDestinations = null;
+  }
+
   grid.innerHTML = destinations.map(d => `
     <div class="destination-card" id="dest-card-${d.id}" onclick="selectDestination('${d.id}')">
       <div class="destination-img" style="background: ${d.gradient}">
@@ -897,28 +1125,60 @@ function selectDestination(id) {
   document.getElementById(`dest-card-${id}`)?.classList.add('selected');
 }
 
-function selectAndGoToItinerary(id) {
+async function selectAndGoToItinerary(id) {
   state.selectedDestination = id;
   state.selectedFlight = null;
+  state.selectedReturnFlight = null;
   state.selectedHotel = null;
+  state.aiPackage = null;
   if (state.user) updateDashboard();
   showPage('page-flights');
+  initDatePicker();
+
+  const dest = findDestination(id);
+  if (!dest) return;
+
+  renderFlights(id); // show spinner immediately
+
+  const depDate = state.tripStartDate || defaultDepartureDate();
+  const retDate = returnDateFor(depDate);
+
+  const [pkgRes, rfRes] = await Promise.allSettled([
+    apiFetch('/ai/package', {
+      method: 'POST',
+      body: JSON.stringify({
+        destination: dest,
+        personalityType: state.personalityType,
+        departureDate: depDate,
+        returnDate: retDate,
+        departureCity: state.departureCity
+      })
+    }),
+    apiFetch('/ai/return-flights', {
+      method: 'POST',
+      body: JSON.stringify({ destination: dest, returnDate: retDate, departureCity: state.departureCity })
+    })
+  ]);
+
+  const pkg = pkgRes.status === 'fulfilled' ? pkgRes.value : {};
+  const rf  = rfRes.status  === 'fulfilled' ? rfRes.value  : {};
+
+  state.aiPackage = {
+    flights: pkg.flights || [],
+    hotels: pkg.hotels || [],
+    itinerary: pkg.itinerary || null,
+    returnFlights: rf.returnFlights || []
+  };
+
   renderFlights(id);
 }
 
 // ===== FLIGHTS =====
-function renderFlights(destId) {
-  const dest = allDestinations.find(d => d.id === destId);
-  if (!dest) return;
-  const nameEl = document.getElementById('flights-dest-name');
-  if (nameEl) nameEl.textContent = dest.name;
-
-  const flights = flightData[destId] || [];
-  const grid = document.getElementById('flights-grid');
-  if (!grid) return;
-
-  grid.innerHTML = flights.map(f => `
-    <div class="flight-card" id="flight-${f.id}" onclick="selectFlight('${f.id}')">
+function buildFlightCard(f, selectFnName) {
+  const isPremium = f.class.toLowerCase().includes('business') || f.class.toLowerCase().includes('first');
+  const dateHtml = f.date && f.date !== 'TBD' ? `<div class="flight-date">${f.date}</div>` : '';
+  return `
+    <div class="flight-card" id="flight-${f.id}" onclick="${selectFnName}('${f.id}')">
       <div class="flight-card-top">
         <div class="flight-airline">
           <span class="flight-badge">${f.badge}</span>
@@ -927,8 +1187,9 @@ function renderFlights(destId) {
             <div class="flight-number">${f.flightNumber}</div>
           </div>
         </div>
-        <span class="flight-class-badge ${f.class.toLowerCase().includes('business') || f.class.toLowerCase().includes('first') ? 'premium' : ''}">${f.class}</span>
+        <span class="flight-class-badge ${isPremium ? 'premium' : ''}">${f.class}</span>
       </div>
+      ${dateHtml}
       <div class="flight-route">
         <div class="flight-endpoint">
           <div class="flight-time">${f.departure}</div>
@@ -952,42 +1213,115 @@ function renderFlights(destId) {
           <div class="flight-price">$${f.price.toLocaleString()}</div>
           <div class="flight-price-label">per person</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();selectFlight('${f.id}')">Select Flight →</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();${selectFnName}('${f.id}')">Select →</button>
       </div>
-    </div>`).join('');
+    </div>`;
+}
 
-  const continueBtn = document.getElementById('flights-continue-btn');
-  if (continueBtn) continueBtn.disabled = !state.selectedFlight;
+function renderFlights(destId) {
+  const dest = findDestination(destId);
+  if (!dest) return;
+  const nameEl = document.getElementById('flights-dest-name');
+  if (nameEl) nameEl.textContent = dest.name;
+
+  const grid = document.getElementById('flights-grid');
+  if (!grid) return;
+
+  // No AI data yet — show spinner
+  if (!state.aiPackage) {
+    grid.innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div><p>Finding the best flights for you…</p></div>`;
+    updateFlightContinueBtn();
+    return;
+  }
+
+  const outbound = state.aiPackage.flights || [];
+  const returnFs = state.aiPackage.returnFlights || [];
+
+  let html = '';
+
+  // Outbound section
+  html += `<div class="flights-section-label">Outbound — ${state.departureCity} → ${dest.name}</div>`;
+  if (outbound.length === 0) {
+    html += `<p style="color:#6B7280;text-align:center;padding:20px">No outbound flights generated. Try reloading.</p>`;
+  } else {
+    html += outbound.map(f => buildFlightCard(f, 'selectFlight')).join('');
+  }
+
+  // Return section
+  html += `<div class="flights-section-label return-label" id="return-flights-section">Return — ${dest.name} → ${state.departureCity}</div>`;
+  if (returnFs.length === 0) {
+    html += `<p style="color:#6B7280;text-align:center;padding:20px">No return flights were generated — try reloading the page or changing your dates.</p>`;
+  } else {
+    html += returnFs.map(f => buildFlightCard(f, 'selectReturnFlight')).join('');
+  }
+
+  grid.innerHTML = html;
+
+  // Re-apply selected states
   if (state.selectedFlight) {
     document.getElementById(`flight-${state.selectedFlight.id}`)?.classList.add('selected');
   }
+  if (state.selectedReturnFlight) {
+    document.getElementById(`flight-${state.selectedReturnFlight.id}`)?.classList.add('selected');
+  }
+
+  updateFlightContinueBtn();
 }
 
 function selectFlight(id) {
-  const flights = flightData[state.selectedDestination] || [];
-  const flight = flights.find(f => f.id === id);
+  const outbound = state.aiPackage?.flights || flightData[state.selectedDestination] || [];
+  const flight = outbound.find(f => f.id === id);
   if (!flight) return;
   state.selectedFlight = flight;
   document.querySelectorAll('.flight-card').forEach(c => c.classList.remove('selected'));
   document.getElementById(`flight-${id}`)?.classList.add('selected');
-  const continueBtn = document.getElementById('flights-continue-btn');
-  if (continueBtn) continueBtn.disabled = false;
+  if (state.selectedReturnFlight) {
+    document.getElementById(`flight-${state.selectedReturnFlight.id}`)?.classList.add('selected');
+  }
+  updateFlightContinueBtn();
+  // Scroll to return flights section
   setTimeout(() => {
-    showPage('page-hotels');
-    renderHotels(state.selectedDestination);
-  }, 250);
+    document.getElementById('return-flights-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function selectReturnFlight(id) {
+  const returnFs = state.aiPackage?.returnFlights || [];
+  const flight = returnFs.find(f => f.id === id);
+  if (!flight) return;
+  state.selectedReturnFlight = flight;
+  document.querySelectorAll('.flight-card').forEach(c => c.classList.remove('selected'));
+  if (state.selectedFlight) {
+    document.getElementById(`flight-${state.selectedFlight.id}`)?.classList.add('selected');
+  }
+  document.getElementById(`flight-${id}`)?.classList.add('selected');
+  updateFlightContinueBtn();
+}
+
+function updateFlightContinueBtn() {
+  const continueBtn = document.getElementById('flights-continue-btn');
+  if (!continueBtn) return;
+  const hasReturn = state.aiPackage?.returnFlights?.length > 0;
+  const ready = state.selectedFlight && (!hasReturn || state.selectedReturnFlight);
+  continueBtn.disabled = !ready;
 }
 
 // ===== HOTELS =====
 function renderHotels(destId) {
-  const dest = allDestinations.find(d => d.id === destId);
+  const dest = findDestination(destId);
   if (!dest) return;
   const nameEl = document.getElementById('hotels-dest-name');
   if (nameEl) nameEl.textContent = dest.name;
 
-  const hotels = hotelData[destId] || [];
   const grid = document.getElementById('hotels-grid');
   if (!grid) return;
+
+  const hotels = state.aiPackage?.hotels || hotelData[destId] || [];
+
+  if (hotels.length === 0) {
+    grid.innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div><p>Loading hotels…</p></div>`;
+    return;
+  }
 
   grid.innerHTML = hotels.map(h => `
     <div class="hotel-card" id="hotel-${h.id}" onclick="selectHotel('${h.id}')">
@@ -1021,7 +1355,7 @@ function renderHotels(destId) {
 }
 
 function selectHotel(id) {
-  const hotels = hotelData[state.selectedDestination] || [];
+  const hotels = state.aiPackage?.hotels || hotelData[state.selectedDestination] || [];
   const hotel = hotels.find(h => h.id === id);
   if (!hotel) return;
   state.selectedHotel = hotel;
@@ -1033,6 +1367,7 @@ function selectHotel(id) {
     if (state.user) updateDashboard();
     showPage('page-itinerary');
     renderItinerary(state.selectedDestination);
+    if (state.user) saveItinerary(true);
   }, 250);
 }
 
@@ -1042,7 +1377,9 @@ function goToFlights() {
 }
 
 function goToHotels() {
-  if (!state.selectedFlight) { showToast('Please select a flight first.', 'info'); return; }
+  const hasReturn = state.aiPackage?.returnFlights?.length > 0;
+  if (!state.selectedFlight) { showToast('Please select an outbound flight first.', 'info'); return; }
+  if (hasReturn && !state.selectedReturnFlight) { showToast('Please select a return flight too.', 'info'); return; }
   showPage('page-hotels');
   renderHotels(state.selectedDestination);
 }
@@ -1056,8 +1393,8 @@ function goToItineraryFromHotels() {
 
 // ===== ITINERARY =====
 function renderItinerary(destId) {
-  const dest = allDestinations.find(d => d.id === destId);
-  const itin = itineraryData[destId] || itineraryData['kyoto'];
+  const dest = findDestination(destId);
+  const itin = state.aiPackage?.itinerary || itineraryData[destId] || itineraryData['kyoto'];
   const pt = personalityTypes[state.personalityType || 'cultural'];
   if (!dest || !itin) return;
 
@@ -1102,18 +1439,28 @@ function updateTripSummaryBar() {
   if (!state.selectedFlight && !state.selectedHotel) { bar.style.display = 'none'; return; }
   bar.style.display = 'flex';
   const f = state.selectedFlight;
+  const rf = state.selectedReturnFlight;
   const h = state.selectedHotel;
-  const totalEstimate = (f ? f.price : 0) + (h ? h.price * 5 : 0);
+  const totalEstimate = (f ? f.price : 0) + (rf ? rf.price : 0) + (h ? h.price * 5 : 0);
   bar.innerHTML = `
     <div class="summary-pill">
       <span class="pill-icon">✈️</span>
       <div>
-        <div class="pill-label">Flight</div>
+        <div class="pill-label">Outbound Flight</div>
         <div class="pill-value">${f ? `${f.airline} · ${f.flightNumber}` : '—'}</div>
         <div class="pill-detail">${f ? `${f.from} → ${f.to} · ${f.stops} · ${f.class}` : ''}</div>
       </div>
       <div class="pill-price">${f ? `$${f.price.toLocaleString()}` : ''}</div>
     </div>
+    ${rf ? `<div class="summary-pill">
+      <span class="pill-icon">✈️</span>
+      <div>
+        <div class="pill-label">Return Flight</div>
+        <div class="pill-value">${rf.airline} · ${rf.flightNumber}</div>
+        <div class="pill-detail">${rf.from} → ${rf.to} · ${rf.stops} · ${rf.class}</div>
+      </div>
+      <div class="pill-price">$${rf.price.toLocaleString()}</div>
+    </div>` : ''}
     <div class="summary-pill">
       <span class="pill-icon">🏨</span>
       <div>
@@ -1121,31 +1468,30 @@ function updateTripSummaryBar() {
         <div class="pill-value">${h ? h.name : '—'}</div>
         <div class="pill-detail">${h ? `${'★'.repeat(h.stars)} · ${h.neighborhood}` : ''}</div>
       </div>
-      <div class="pill-price">${h ? `$${h.price.toLocaleString()}/night` : ''}</div>
+      <div class="pill-price" style="text-align:right">${h ? `<div>$${h.price.toLocaleString()}</div><div style="font-size:0.7rem;font-weight:500;color:#6B7280">/night</div>` : ''}</div>
     </div>
     <div class="summary-pill total">
       <span class="pill-icon">💰</span>
       <div>
         <div class="pill-label">Est. Total</div>
         <div class="pill-value">$${totalEstimate.toLocaleString()}</div>
-        <div class="pill-detail">Flight + 5 nights hotel</div>
+        <div class="pill-detail">${rf ? 'Outbound + Return + 5 nights' : 'Flight + 5 nights hotel'}</div>
       </div>
     </div>`;
 }
 
-async function saveItinerary() {
+async function saveItinerary(silent = false) {
   if (!state.user || !getToken()) {
-    showToast('Please log in to save your itinerary.', 'info');
-    showAuthPage('login');
+    if (!silent) { showToast('Please log in to save your itinerary.', 'info'); showAuthPage('login'); }
     return;
   }
   if (!state.selectedDestination) {
-    showToast('No destination selected.', 'info');
+    if (!silent) showToast('No destination selected.', 'info');
     return;
   }
 
-  const dest = allDestinations.find(d => d.id === state.selectedDestination);
-  const itin = itineraryData[state.selectedDestination];
+  const dest = findDestination(state.selectedDestination);
+  const itin = state.aiPackage?.itinerary || itineraryData[state.selectedDestination];
   if (!dest || !itin) return;
 
   try {
@@ -1157,14 +1503,22 @@ async function saveItinerary() {
         personalityType: state.personalityType,
         itinerary: itin,
         flight: state.selectedFlight || null,
-        hotel: state.selectedHotel || null
+        returnFlight: state.selectedReturnFlight || null,
+        hotel: state.selectedHotel || null,
+        destination: dest,
+        availableFlights: state.aiPackage?.flights || null,
+        availableReturnFlights: state.aiPackage?.returnFlights || null,
+        availableHotels: state.aiPackage?.hotels || null,
+        departureDate: state.tripStartDate || null,
+        returnDate: state.tripStartDate ? returnDateFor(state.tripStartDate) : null
       })
     });
     state.savedItinerary = true;
-    showToast(`${dest.name} itinerary saved to your account! ✓`);
-    if (state.user) updateDashboard();
+    if (!silent) showToast(`${dest.name} itinerary saved to your account! ✓`);
+    if (state.user) { updateDashboard(); renderSavedTrips(); }
   } catch (err) {
-    showToast(`Could not save: ${err.message}`, 'info');
+    if (!silent) showToast(`Could not save: ${err.message}`, 'info');
+    else console.warn('Auto-save failed:', err.message);
   }
 }
 
