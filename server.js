@@ -7,6 +7,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { initDB } = require('./db');
 const authRoutes = require('./routes/auth');
 const itineraryRoutes = require('./routes/itinerary');
+const contactRoutes = require('./routes/contact');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +28,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/itinerary', itineraryRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/ai', aiRoutes);
 
 // ── AI Chatbot Route ─────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
