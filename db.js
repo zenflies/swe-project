@@ -25,9 +25,13 @@ function initDB() {
       last_name     TEXT    NOT NULL DEFAULT '',
       email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
       password_hash TEXT    NOT NULL,
+      is_admin      INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Migrate existing databases that predate is_admin column
+  try { db.exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`); } catch (_) {}
 
   // ── Quiz results table ─────────────────────────────────────────────────────
   db.exec(`
@@ -58,9 +62,16 @@ function initDB() {
     );
   `);
 
-  // Add flight_json / hotel_json to existing databases that predate this column
+  // Migrate itineraries columns added over time
   try { db.exec(`ALTER TABLE itineraries ADD COLUMN flight_json TEXT`); } catch (_) {}
   try { db.exec(`ALTER TABLE itineraries ADD COLUMN hotel_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN return_flight_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN destination_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN available_flights_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN available_return_flights_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN available_hotels_json TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN departure_date TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE itineraries ADD COLUMN return_date TEXT`); } catch (_) {}
 
   console.log('✅ Database initialised at', DB_PATH);
   return db;

@@ -7,6 +7,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { initDB } = require('./db');
 const authRoutes = require('./routes/auth');
 const itineraryRoutes = require('./routes/itinerary');
+const contactRoutes = require('./routes/contact');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +28,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/itinerary', itineraryRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ── AI Chatbot Route ─────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
@@ -92,6 +96,11 @@ app.post('/api/hotels', async (req, res) => {
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ── Admin panel ───────────────────────────────────────────────────────────────
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // ── Fallback: serve index.html for SPA routing ────────────────────────────────
