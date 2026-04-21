@@ -582,9 +582,39 @@
         <p style="color:#6B7280;max-width:500px;margin:0 auto;font-size:0.95rem">
           Select the flight that suits your budget and travel style. Prices shown are per person.
         </p>
+        <div class="trip-date-picker">
+          <div class="date-field">
+            <label for="trip-departure-city">Departure City</label>
+            <input type="text" id="trip-departure-city" placeholder="New York (JFK)"
+              onblur="handleDepartureCityChange(this.value)"
+              onkeydown="if(event.key==='Enter'){this.blur()}" />
+          </div>
+          <div class="date-arrow">✈️</div>
+          <div class="date-field">
+            <label for="trip-depart-date">Departure Date</label>
+            <input type="date" id="trip-depart-date" onchange="handleDateChange(this.value)" />
+          </div>
+          <div class="date-arrow">→</div>
+          <div class="date-field">
+            <label>Return Date <span class="date-note">(5 nights)</span></label>
+            <div class="date-display" id="trip-return-date">—</div>
+          </div>
+        </div>
+        <div class="trip-budget-row">
+          <div class="date-field budget-field">
+            <label for="trip-budget">Total Trip Budget (USD)</label>
+            <div class="budget-input-wrap">
+              <span class="budget-currency">$</span>
+              <input type="number" id="trip-budget" placeholder="e.g. 2000" min="0" step="50"
+                onchange="handleBudgetChange(this.value)" />
+            </div>
+            <span class="budget-hint">Flights exceeding your budget will be hidden</span>
+          </div>
+          <button class="btn btn-primary" onclick="searchFlights()" style="align-self:flex-end;margin-bottom:2px">Search Flights →</button>
+        </div>
       </div>
       <div class="flights-grid" id="flights-grid">
-        <!-- Rendered by JS -->
+        <div style="text-align:center;padding:60px;color:#94a3b8;grid-column:1/-1">Enter your departure city and date above, then click <strong>Search Flights</strong>.</div>
       </div>
       <div id="return-flights-section" style="display:none">
         <div class="flights-header" style="margin-top:48px;margin-bottom:24px">

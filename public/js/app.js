@@ -38,7 +38,10 @@ const state = {
   selectedFlight: null,
   selectedReturnFlight: null,
   selectedHotel: null,
-  savedItinerary: false
+  savedItinerary: false,
+  departureCity: 'New York (JFK)',
+  departureDate: '',
+  budget: null
 };
 
 // ===== QUIZ DATA =====
@@ -1020,11 +1023,21 @@ function _normalizeFlightData(f, i, idPrefix) {
   };
 }
 
-async function renderFlights(destId) {
+function renderFlights(destId) {
   const dest = allDestinations.find(d => d.id === destId);
   if (!dest) return;
   const nameEl = document.getElementById('flights-dest-name');
   if (nameEl) nameEl.textContent = dest.name;
+
+  const grid = document.getElementById('flights-grid');
+  if (grid) grid.innerHTML = '<div style="text-align:center;padding:60px;color:#94a3b8;grid-column:1/-1">Enter your departure city and date above, then click <strong>Search Flights</strong>.</div>';
+  const returnSection = document.getElementById('return-flights-section');
+  if (returnSection) returnSection.style.display = 'none';
+}
+
+async function fetchAndRenderFlights(destId) {
+  const dest = allDestinations.find(d => d.id === destId);
+  if (!dest) return;
 
   const grid = document.getElementById('flights-grid');
   if (!grid) return;
@@ -1035,9 +1048,14 @@ async function renderFlights(destId) {
 
   let flights, returnFlights = [];
   try {
+    const fromCity = state.departureCity || 'New York (JFK)';
+    const depDate = state.departureDate || '';
+    const dateClause = depDate ? `departing ${depDate}` : 'departing next month';
+    const retDate = depDate ? (() => { const [y,m,d] = depDate.split('-').map(Number); return new Date(y, m-1, d+5).toLocaleDateString('en-CA'); })() : '';
+    const retClause = retDate ? `, returning ${retDate}` : ', returning after 5 nights';
     const data = await apiFetch('/flights', {
       method: 'POST',
-      body: JSON.stringify({ query: `Round-trip flights to ${dest.name} departing next month, returning after 7 days. Search both outbound and return legs.` })
+      body: JSON.stringify({ query: `Round-trip flights from ${fromCity} to ${dest.name} ${dateClause}${retClause}. Search both outbound and return legs.` })
     });
     if (data.flights && data.flights.length) {
       flights = data.flights.map((f, i) => _normalizeFlightData(f, i, 'live'));
@@ -1049,6 +1067,18 @@ async function renderFlights(destId) {
     }
   } catch (err) {
     flights = flightData[destId] || [];
+  }
+
+  if (state.budget) {
+    flights = flights.filter(f => f.price <= state.budget);
+    returnFlights = returnFlights.filter(f => f.price <= state.budget);
+  }
+
+  if (!flights.length) {
+    grid.innerHTML = `<div style="text-align:center;padding:60px;color:#94a3b8;grid-column:1/-1">No flights found within your $${state.budget?.toLocaleString()} budget. Try raising your budget or changing your dates.</div>`;
+    const continueBtn = document.getElementById('flights-continue-btn');
+    if (continueBtn) continueBtn.disabled = true;
+    return;
   }
 
   grid.innerHTML = flights.map(f => _buildFlightCard(f, flights, false)).join('');
@@ -1162,7 +1192,56 @@ function selectHotel(id) {
 
 function goToFlights() {
   showPage('page-flights');
-  renderFlights(state.selectedDestination);
+  // Reset inputs so user fills them in fresh for this trip
+  state.departureCity = '';
+  state.departureDate = '';
+  state.budget = null;
+  const cityInput = document.getElementById('trip-departure-city');
+  if (cityInput) cityInput.value = '';
+  const dateInput = document.getElementById('trip-depart-date');
+  if (dateInput) dateInput.value = '';
+  const returnEl = document.getElementById('trip-return-date');
+  if (returnEl) returnEl.textContent = '—';
+  const budgetInput = document.getElementById('trip-budget');
+  if (budgetInput) budgetInput.value = '';
+  // Reset grid to prompt state
+  const grid = document.getElementById('flights-grid');
+  if (grid) grid.innerHTML = '<div style="text-align:center;padding:60px;color:#94a3b8;grid-column:1/-1">Enter your departure city and date above, then click <strong>Search Flights</strong>.</div>';
+  const returnSection = document.getElementById('return-flights-section');
+  if (returnSection) returnSection.style.display = 'none';
+}
+
+function searchFlights() {
+  const cityInput = document.getElementById('trip-departure-city');
+  const dateInput = document.getElementById('trip-depart-date');
+  if (!cityInput?.value.trim()) { showToast('Please enter your departure city.', 'info'); cityInput?.focus(); return; }
+  if (!dateInput?.value) { showToast('Please select a departure date.', 'info'); dateInput?.focus(); return; }
+  state.departureCity = cityInput.value.trim();
+  state.departureDate = dateInput.value;
+  fetchAndRenderFlights(state.selectedDestination);
+}
+
+function handleDepartureCityChange(value) {
+  state.departureCity = value.trim() || 'New York (JFK)';
+}
+
+function handleBudgetChange(value) {
+  const n = parseFloat(value);
+  state.budget = (!value || isNaN(n) || n <= 0) ? null : n;
+}
+
+function handleDateChange(value) {
+  state.departureDate = value;
+  _updateReturnDateDisplay(value);
+}
+
+function _updateReturnDateDisplay(departureDateIso) {
+  if (!departureDateIso) return;
+  const [y, m, d] = departureDateIso.split('-').map(Number);
+  const ret = new Date(y, m - 1, d + 5);
+  const label = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const el = document.getElementById('trip-return-date');
+  if (el) el.textContent = label;
 }
 
 function goToHotels() {
